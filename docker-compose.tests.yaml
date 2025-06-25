@@ -1,0 +1,29 @@
+services:
+  test_db:
+    image: postgres:15.3-alpine
+    environment:
+      POSTGRES_USER: testusrak
+      POSTGRES_PASSWORD: testusrakpassword
+      POSTGRES_DB: testusrakdb
+    ports:
+      - "15434:5432"
+    volumes:
+      - pg_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testusrak -d testusrakdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test_redis:
+    image: redis:8.0.1-alpine
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_test_data:

@@ -1,0 +1,21 @@
+root_dir: "."
+
+patterns:
+  - "tests/**/*.py"
+  - "trash/**/*.py"
+  - "usrak/**/*.py"
+  - ".gitignore"
+  - "pyproject.toml"
+  - "README.md"
+
+
+ignore_patterns:
+  - ".venv"           # Исключить директорию venv
+  - ".idea"
+  - "venv"           # Исключить директорию venv
+  - "**/__pycache__/" # Исключить директории __pycache__
+  - "*.log"          # Исключить все .log файлы
+
+# Опциональный параметр: игнорировать ли пустые файлы __init__.py.
+# Если true, пустые __init__.py будут исключены.
+ignore_empty_init_py: true
