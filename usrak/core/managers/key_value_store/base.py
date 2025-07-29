@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
@@ -10,34 +10,34 @@ if TYPE_CHECKING:
     from usrak.core.config_schemas import AppConfig, RouterConfig
 
 
-class KeyValueStoreABS(ABC):
+class SingletonABCMeta(ABCMeta):
+    """
+    Метакласс, совмещающий Singleton и ABC.
+    При первом создании экземпляра сохраняет его,
+    при последующих — возвращает сохранённый.
+    """
+    _instances: dict[type, object] = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class KeyValueStoreABS(metaclass=SingletonABCMeta):
     """Хранилище ключ-значение."""
 
-    _instance = None
     _app_config: "AppConfig" = None
     _router_config: "RouterConfig" = None
-
-    def __new__(
-            cls,
-            app_config: "AppConfig" = Depends(get_app_config),
-            router_config: "RouterConfig" = Depends(get_router_config)
-    ):
-        if cls.__name__ == "KeyValueStoreABS":
-            raise TypeError(f"Cannot instantiate abstract class {cls.__name__}.")
-
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._app_config = app_config
-            cls._instance._router_config = router_config
-
-        return cls._instance
 
     def __init__(
             self,
             app_config: "AppConfig",  # For FastAPI type checking
             router_config: "RouterConfig"  # For FastAPI type checking
     ):
-        pass
+        self._app_config = app_config
+        self._router_config = router_config
 
     @property
     def app_config(self) -> "AppConfig":
@@ -119,4 +119,3 @@ class KeyValueStoreABS(ABC):
     async def httl(self, key: str) -> float | None:
         """Возвращает TTL hash-ключа или None."""
         raise NotImplementedError
-
