@@ -1,4 +1,3 @@
-from functools import lru_cache
 from typing import Optional, TYPE_CHECKING
 
 from fastapi import Depends
@@ -8,14 +7,6 @@ from usrak.core.dependencies.config_provider import get_app_config, get_router_c
 
 if TYPE_CHECKING:
     from usrak.core.config_schemas import AppConfig, RouterConfig
-
-
-@lru_cache
-def _get_kvs(app_cfg, router_cfg):
-    return router_cfg.KEY_VALUE_STORE(
-        app_config=app_cfg,
-        router_config=router_cfg,
-    )
 
 
 class ConfigDependencyMixin:
@@ -46,4 +37,7 @@ class ConfigDependencyMixin:
 
     @property
     def kvs(self):
-        return _get_kvs(self.app_config, self.router_config)
+        return self.router_config.KEY_VALUE_STORE(
+            app_config=self.app_config,
+            router_config=self.router_config
+        )
