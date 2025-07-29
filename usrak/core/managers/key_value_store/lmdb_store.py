@@ -55,6 +55,7 @@ class LMDBKeyValueStore(KeyValueStoreABS):
             max_dbs=1,
             lock=True,
             readahead=True,
+            max_readers=512
         )
         self._watcher_thread = th.Thread(
             target=self._expired_kv_pairs_watcher,
