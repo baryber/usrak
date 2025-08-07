@@ -40,7 +40,7 @@ async def logout_user(
     refresh_token = request.cookies.get("refresh_token")
 
     if access_token and refresh_token and user:
-        await auth_tokens_manager.terminate_all_user_sessions(user_identifier=user.internal_id)
+        await auth_tokens_manager.terminate_all_user_sessions(user_identifier=user.user_identifier)
 
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")

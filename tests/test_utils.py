@@ -2,21 +2,21 @@ import pytest
 from starlette.requests import Request
 from starlette.datastructures import Headers
 
-from usrak.utils.internal_id import generate_internal_id_from_str
+from usrak.utils.identifier import generate_identifier_from_str
 from usrak.remote_address import get_remote_address
 from usrak import AppConfig
 
 
-def test_generate_internal_id_from_str():
+def test_generate_identifier_from_str():
     """Тестирует генерацию внутреннего ID."""
-    internal_id = generate_internal_id_from_str()
-    assert isinstance(internal_id, str)
+    identifier = generate_identifier_from_str()
+    assert isinstance(identifier, str)
     # Проверяем, что это валидный UUID (хотя функция просто вызывает uuid.uuid4())
     from uuid import UUID
     try:
-        UUID(internal_id)
+        UUID(identifier)
     except ValueError:
-        pytest.fail("Generated internal_id is not a valid UUID string.")
+        pytest.fail("Generated identifier is not a valid UUID string.")
 
 
 @pytest.mark.asyncio

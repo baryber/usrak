@@ -65,7 +65,7 @@ class PasswordResetManager:
             raise exc.MailSendRateLimitException(verification_wait_time)
 
         reset_token = await self.rate_limiter.create_link(
-            user_identifier=user.internal_id,
+            user_identifier=user.user_identifier,
             password_version=user.password_version
         )
 
@@ -90,7 +90,7 @@ class PasswordResetManager:
             raise exc.VerificationFailedException
 
         if not await self.rate_limiter.verify_link(
-            user_identifier=user.internal_id,
+            user_identifier=user.user_identifier,
             password_version=user.password_version,
             token=reset_token
         ):
@@ -125,4 +125,4 @@ class PasswordResetManager:
         self.session.add(user)
         self.session.commit()
 
-        await self.rate_limiter.cleanup(user_identifier=user.internal_id)
+        await self.rate_limiter.cleanup(user_identifier=user.user_identifier)

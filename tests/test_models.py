@@ -9,13 +9,13 @@ from tests.fixtures.user import TestUserCreateSchema, TestUserModel
 def test_user_model_base_cannot_be_instantiated():
     """Тестирует, что UserModelBase не может быть инстанциирован напрямую."""
     with pytest.raises(TypeError, match="UserModelBase is an abstract class and cannot be instantiated."):
-        UserModelBase(internal_id="test", email="test@example.com", auth_provider="email")
+        UserModelBase(super_id="test", email="test@example.com", auth_provider="email")
 
 
 def test_test_user_model_creation(db_session):  # db_session для потенциального сохранения
     """Тестирует создание экземпляра TestUserModel (наследника UserModelBase)."""
     user_data = {
-        "internal_id": "user123",
+        "super_id": 123,
         "email": "test@example.com",
         "auth_provider": "email",
         "hashed_password": "hashed_pw",
@@ -23,7 +23,7 @@ def test_test_user_model_creation(db_session):  # db_session для потенц
     }
     user = TestUserModel(**user_data)
 
-    assert user.internal_id == "user123"
+    assert user.user_identifier == "user123"
     assert user.email == "test@example.com"  # Нормализация должна произойти при валидации Pydantic
     assert user.auth_provider == "email"
     assert user.hashed_password == "hashed_pw"
@@ -38,9 +38,10 @@ def test_test_user_model_creation(db_session):  # db_session для потенц
 def test_user_model_email_normalization():
     """Тестирует нормализацию email в UserModelBase через TestUserModel."""
     user = TestUserModel(
-        internal_id="user-norm",
+        super_id=1,
         email=" TestUser@Example.COM ",
-        auth_provider="email"
+        auth_provider="email",
+        hashed_password="hashed_pw"
     )
     assert user.email == "testuser@example.com"
 
@@ -49,7 +50,7 @@ def test_user_model_email_validation():
     """Тестирует валидацию email (Pydantic EmailStr)."""
     with pytest.raises(ValidationError):
         TestUserModel(
-            internal_id="user-invalid-email",
+            super_id="user-invalid-email",
             email="notanemail",
             auth_provider="email"
         )
@@ -77,9 +78,9 @@ def test_user_model_defaults(db_session):
 
 def test_user_model_auth_provider_literal():
     """Тестирует, что auth_provider принимает только разрешенные значения."""
-    TestUserModel(internal_id="u1", email="e1@example.com", auth_provider="email")
-    TestUserModel(internal_id="u2", email="e2@example.com", auth_provider="google")
-    TestUserModel(internal_id="u3", email="e3@example.com", auth_provider="telegram")
+    TestUserModel(super_id=1, email="e1@example.com", auth_provider="email")
+    TestUserModel(super_id=2, email="e2@example.com", auth_provider="google")
+    TestUserModel(super_id=3, email="e3@example.com", auth_provider="telegram")
 
     with pytest.raises(ValidationError):
-        TestUserModel(internal_id="u4", email="e4@example.com", auth_provider="facebook")  # type: ignore
+        TestUserModel(super_id=4, email="e4@example.com", auth_provider="facebook")  # type: ignore

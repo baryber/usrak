@@ -26,7 +26,7 @@ class OneTimeTokenVerification(OneTimeVerificationABS[str]):
     ) -> str | None:
         token_expires = datetime.now(timezone.utc) + timedelta(seconds=config.ACCESS_TOKEN_EXPIRE_SEC)
         encode_data = JwtTokenPayloadData(
-            internal_id=user_identifier,
+            user_identifier=user_identifier,
             exp=token_expires,
             secret_context=secret_context
         )

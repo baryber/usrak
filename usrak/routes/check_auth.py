@@ -10,7 +10,7 @@ from usrak.core.dependencies import user as user_deps
 async def check_auth(
     user: UserModelBase = Depends(user_deps.get_user_if_verified_and_active)
 ):
-    logger.info(f"User {user.internal_id} is authenticated by check_auth endpoint")
+    logger.info(f"User {user.user_identifier} is authenticated by check_auth endpoint")
     return StatusResponse(
         success=True,
         message="Operation completed",

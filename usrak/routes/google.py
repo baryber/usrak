@@ -8,7 +8,7 @@ from fastapi import Depends, Request
 
 from usrak.core import exceptions as exc
 from usrak.core.google import exchange_code_for_token, get_userinfo
-from usrak.utils.internal_id import generate_internal_id_from_str as gen_internal_id
+from usrak.utils.identifier import generate_identifier_from_str as gen_internal_id
 
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
@@ -102,7 +102,7 @@ async def google_oauth_callback(
         user = User(
             auth_provider="google",
             email=google_mail,
-            internal_id=gen_internal_id(),
+            user_identifier=gen_internal_id(),
             external_id=userinfo.get("sub"),
             is_active=True,
             is_verified=True,
@@ -119,11 +119,11 @@ async def google_oauth_callback(
         raise exc.InvalidCredentialsException
 
     access_token = await auth_tokens_manager.create_access_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
     refresh_token = await auth_tokens_manager.create_refresh_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
 

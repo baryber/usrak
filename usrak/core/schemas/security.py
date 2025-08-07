@@ -1,6 +1,5 @@
-from typing import Optional
-from typing_extensions import TypedDict
 from datetime import datetime
+from typing import Optional, Any
 
 from pydantic import BaseModel
 
@@ -13,7 +12,7 @@ class SecretContext(BaseModel):
 
 class JwtTokenPayloadData(BaseModel):
     token_type: str
-    user_identifier: str
+    user_identifier: Any
     exp: datetime
     jti: str
     secret_context: Optional[SecretContext] = None

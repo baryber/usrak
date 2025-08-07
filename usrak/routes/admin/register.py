@@ -38,7 +38,7 @@ async def register_new_user(
         is_verified=True,
         is_active=True,
     )
-    logger.info(f"User {user.email} registered by admin {admin.email} with ID {admin.internal_id}.")
+    logger.info(f"User {user.email} registered by admin {admin.email} with ID {admin.user_identifier}.")
 
     next_step = (enums.ResponseNextStep.VERIFY.value
                  if router_config.USE_VERIFICATION_LINKS_FOR_SIGNUP

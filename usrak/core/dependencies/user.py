@@ -38,17 +38,16 @@ async def get_user(
     if payload is None:
         raise exc.InvalidAccessTokenException
 
-    internal_id = payload.user_identifier
-    if internal_id is None:
+    if payload.user_identifier is None:
         raise exc.InvalidAccessTokenException
 
-    user = session.exec(select(User).where(User.internal_id == internal_id)).first()
+    user = session.exec(select(User).where(User.user_identifier == payload.user_identifier)).first()
     if not user:
         raise exc.InvalidCredentialsException
 
     await auth_tokens_manager.validate_access_token(
         token=access_token,
-        user_identifier=internal_id,
+        user_identifier=payload.user_identifier,
         password_version=user.password_version,
     )
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from typing import Any
 
 from usrak.core.logger import logger
 
@@ -18,7 +19,7 @@ class TokensManagerBase(ConfigDependencyMixin):
         :param user_identifier: The user identifier.
         :return: The generated key prefix.
         """
-        return ":".join(args)
+        return ":".join([str(arg) for arg in args])
 
     async def calculate_token_delta(self, exp: datetime) -> float:
         """
@@ -36,7 +37,7 @@ class TokensManagerBase(ConfigDependencyMixin):
 
     async def _verify_token_jti(
             self,
-            user_identifier: str,
+            user_identifier: Any,
             token_type: str,
             jti: str,
     ):
@@ -61,7 +62,7 @@ class TokensManagerBase(ConfigDependencyMixin):
     async def _set_token_jti(
             self,
             token_type: str,
-            user_identifier: str,
+            user_identifier: Any,
             jti: str,
             exp: int | float,
     ):
@@ -86,7 +87,7 @@ class TokensManagerBase(ConfigDependencyMixin):
     async def _unset_token_jti(
             self,
             token_type: str,
-            user_identifier: str,
+            user_identifier: Any,
     ):
         """
         Delete the token JTI from the key-value store.
@@ -103,7 +104,7 @@ class TokensManagerBase(ConfigDependencyMixin):
     async def deactivate_token(
             self,
             token_type: str,
-            user_identifier: str,
+            user_identifier: Any,
     ):
         """
         Deactivate the token by deleting its JTI from the key-value store.
@@ -116,7 +117,7 @@ class TokensManagerBase(ConfigDependencyMixin):
     async def create_token(
             self,
             token_type: str,
-            user_identifier: str,
+            user_identifier: Any,
             exp: int | float,
             jti: str,
             jwt_secret: str,
@@ -150,7 +151,7 @@ class TokensManagerBase(ConfigDependencyMixin):
             self,
             token: str,
             jwt_secret: str,
-            user_identifier: str,
+            user_identifier: Any,
             secret_context: SecretContext | None = None
     ) -> JwtTokenPayloadData | None:
         """

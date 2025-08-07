@@ -14,7 +14,7 @@ class TestUserModel(UserModelBase, table=True):
 
     __tablename__ = "test_users"
 
-    id: Optional[int] = Field(default=None, primary_key=True, index=True)
+    super_id: Optional[int] = Field(default=None, primary_key=True, index=True)
 
     extra_field: str | None = Field(default=None)
 
@@ -26,7 +26,7 @@ class TestUserCreateSchema(BaseModel):
     password: str | None = Field()
 
 
-@pick(TestUserModel, "internal_id", "email", "is_active", "is_verified", "user_name", "extra_field")
+@pick(TestUserModel, "super_id", "email", "is_active", "is_verified", "user_name", "extra_field")
 class TestUserReadSchema(BaseModel):
     """Тестовая схема для чтения пользователей."""
 
@@ -62,6 +62,32 @@ async def created_test_user(
         db_session,
         test_user
 ) -> TestUserModel:
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+    return test_user
+
+
+@pytest.fixture
+async def unverified_user(
+        db_session,
+        test_user
+) -> TestUserModel:
+    test_user.email = "unverified_" + test_user.email
+    test_user.is_verified = False
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+    return test_user
+
+
+@pytest.fixture
+async def inactive_user(
+        db_session,
+        test_user
+) -> TestUserModel:
+    test_user.email = "inactive_" + test_user.email
+    test_user.is_active = False
     db_session.add(test_user)
     db_session.commit()
     db_session.refresh(test_user)
