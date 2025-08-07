@@ -9,7 +9,7 @@ from sqlmodel import select, Session
 from starlette.responses import RedirectResponse
 
 from usrak.core import exceptions as exc
-from usrak.utils.internal_id import generate_internal_id_from_str as gen_internal_id
+from usrak.utils.identifier import generate_identifier_from_str as gen_internal_id
 
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
@@ -85,7 +85,7 @@ async def telegram_auth(
         user = User(
             auth_provider="telegram",
             external_id=str(user.id),
-            internal_id=gen_internal_id(),
+            user_identifier=gen_internal_id(),
             user_name=user.username or user.username or f"{user.first_name} {user.last_name or ''}".strip(),
             is_active=True,
             is_verified=True,
@@ -103,11 +103,11 @@ async def telegram_auth(
         raise exc.UserDeactivatedException
 
     access_token = await auth_tokens_manager.create_access_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
     refresh_token = await auth_tokens_manager.create_refresh_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
 

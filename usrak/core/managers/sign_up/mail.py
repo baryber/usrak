@@ -9,7 +9,7 @@ from usrak.core import exceptions as exc, dependencies as deps
 from usrak.core.models.user import UserModelBase
 from usrak.core.security import verify_password, hash_password
 
-from usrak.utils.internal_id import generate_internal_id_from_str as gen_internal_id
+from usrak.utils.identifier import generate_identifier_from_str as gen_internal_id
 from usrak.core.managers.tokens.one_time import OneTimeTokensManager
 
 from usrak.core.db import get_db
@@ -65,7 +65,7 @@ class MailSignupManager:
 
         new_user = User(
             email=email,
-            internal_id=gen_internal_id(),
+            user_identifier=gen_internal_id(),
             auth_provider=auth_provider,
             hashed_password=hash_password(plain_password),
             is_active=is_active,
@@ -95,7 +95,7 @@ class MailSignupManager:
             raise exc.MailSendRateLimitException(verify_wait_time)
 
         token = await self.tokens_manager.create_one_time_token(
-            user_identifier=user.internal_id,
+            user_identifier=user.user_identifier,
             exp=self.app_config.EMAIL_VERIFICATION_LINK_EXPIRE_SEC,
             password_version=user.password_version,
             purpose="signup",

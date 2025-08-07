@@ -35,7 +35,7 @@ class MailLinkRateLimiter(RLBase):
     ):
         token_expires = datetime.now(timezone.utc) + timedelta(seconds=config.ACCESS_TOKEN_EXPIRE_SEC)
         encode_data = PasswordResetTokenEncodeData(
-            internal_id=user_identifier,
+            user_identifier=user_identifier,
             password_version=password_version,
             exp=token_expires
         )

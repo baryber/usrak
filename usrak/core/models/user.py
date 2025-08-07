@@ -1,14 +1,14 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Literal
+from typing import Optional, Literal, ClassVar
 
 from sqlmodel import SQLModel, Field, Column, TIMESTAMP, String
+from sqlalchemy.ext.hybrid import hybrid_property
 from pydantic import EmailStr, field_validator
 
 
 class UserModelBase(SQLModel, table=False):
     """ Базовая модель пользователя для SQLModel."""
-    internal_id: str = Field(nullable=False, unique=True, max_length=64, default_factory=lambda : str(uuid.uuid4()))
     external_id: Optional[str] = Field(default=None, nullable=True, max_length=64)
 
     email: EmailStr = Field(unique=True, index=True, max_length=255)
@@ -40,8 +40,21 @@ class UserModelBase(SQLModel, table=False):
         )
     )
 
+    __id_field_name__ = "id"
+
     class Config:
         validate_assignment = True
+
+    @hybrid_property
+    def user_identifier(self):
+        return getattr(self, self.__id_field_name__)
+
+    @user_identifier.expression
+    @classmethod
+    def _user_identifier(cls):
+        return getattr(cls, cls.__id_field_name__)
+
+    user_identifier: ClassVar
 
     @field_validator("email", mode="before")
     @classmethod
@@ -55,6 +68,10 @@ class UserModelBase(SQLModel, table=False):
         return super().__new__(cls)
 
     def __init__(self, **kwargs):
+
+        if "user_identifier" in kwargs:
+            kwargs[self.__id_field_name__] = kwargs.pop("user_identifier")
+
         is_table = getattr(self.model_config, 'table', False)
         self.model_config["table"] = False
         super().__init__(**kwargs)

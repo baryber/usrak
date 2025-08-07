@@ -2,7 +2,7 @@ from typing import List, Optional, Literal
 
 from pydantic import BaseModel, Field
 from pydantic import PostgresDsn, RedisDsn, EmailStr
-from pydantic import field_validator
+from pydantic import model_validator, field_validator
 
 from usrak.core.managers.key_value_store import LMDBKeyValueStore
 from usrak.core.managers.notification.no_op import NoOpNotificationService
@@ -12,12 +12,14 @@ from usrak import providers_type as pt
 
 
 class RouterConfig(BaseModel):
-
     USER_MODEL: pt.UserModelType = Field(
         ..., description="User's SQLModel class redefined from 'UserModelBase'"
     )
     USER_READ_SCHEMA: pt.UserReadSchemaType = Field(
         ..., description="User's read schema class redefined from user's SQLModel class ('USER_MODEL')"
+    )
+    USER_IDENTIFIER_FIELD_NAME: str | None = Field(
+        default="id", description="Identifier field name in USER_MODEL, used for user identification"
     )
     KEY_VALUE_STORE: pt.KeyValueStoreType | Literal["in_memory", "redis", "lmdb"] = Field(
         default=LMDBKeyValueStore, description="KeyValueStore class"
@@ -61,11 +63,22 @@ class RouterConfig(BaseModel):
     USE_REDIS_FOR_KV_STORE: bool = False if ENABLE_REDIS_CLIENT else False  # Для кодов, токенов AuthManager и т.д.
 
     ENABLE_SMTP_CLIENT: bool = False  # Глобальный флаг для SMTP
+
     # SMTP будет использоваться, если включен соответствующий функционал (коды, сброс пароля) и ENABLE_SMTP_CLIENT=True
+
+    @model_validator(mode="after")
+    def validate_user_identifier(self):
+        if not hasattr(self.USER_MODEL, self.USER_IDENTIFIER_FIELD_NAME):
+            raise ValueError(
+                f"USER_MODEL must have field '{self.USER_IDENTIFIER_FIELD_NAME}', defined in USER_IDENTIFIER_FIELD_NAME")
+
+        setattr(self.USER_MODEL, "__id_field_name__", self.USER_IDENTIFIER_FIELD_NAME)
+        return self
 
     @field_validator("KEY_VALUE_STORE", mode="before")
     @classmethod
-    def validate_key_value_store(cls, v: pt.KeyValueStoreType | Literal["in_memory", "redis", "lmdb"]) -> pt.KeyValueStoreType:
+    def validate_key_value_store(cls, v: pt.KeyValueStoreType | Literal[
+        "in_memory", "redis", "lmdb"]) -> pt.KeyValueStoreType:
         print("validate_key_value_store KEY_VALUE_STORE")
         if isinstance(v, str):
             if v == "in_memory":
@@ -83,7 +96,8 @@ class RouterConfig(BaseModel):
 
     @field_validator("NOTIFICATION_SERVICE", mode="before")
     @classmethod
-    def validate_notification_service(cls, v: pt.NotificationServiceType | Literal["smtp"] | None) -> pt.NotificationServiceType | None:
+    def validate_notification_service(cls, v: pt.NotificationServiceType | Literal[
+        "smtp"] | None) -> pt.NotificationServiceType | None:
         if isinstance(v, str):
             if v == "smtp":
                 from usrak.core.managers.notification.smtp import SmtpNotificationService
@@ -100,7 +114,8 @@ class RouterConfig(BaseModel):
 
     @field_validator("FAST_API_RATE_LIMITER", mode="before")
     @classmethod
-    def validate_fast_api_rate_limiter(cls, v: pt.FastApiRateLimiterType | Literal["redis"] | None) -> pt.FastApiRateLimiterType | None:
+    def validate_fast_api_rate_limiter(cls, v: pt.FastApiRateLimiterType | Literal[
+        "redis"] | None) -> pt.FastApiRateLimiterType | None:
         if isinstance(v, str):
             if v == "redis":
                 # TODO: Implement RedisFastApiRateLimiter
@@ -117,7 +132,8 @@ class RouterConfig(BaseModel):
 
     @field_validator("SMTP_CLIENT", mode="before")
     @classmethod
-    def validate_smtp_client(cls, v: pt.SMTPClientType | Literal["default", "no_op"] | None) -> pt.SMTPClientType | None:
+    def validate_smtp_client(cls,
+                             v: pt.SMTPClientType | Literal["default", "no_op"] | None) -> pt.SMTPClientType | None:
         if isinstance(v, str):
             if v == "default":
                 from usrak.core.smtp.client import SMTPClient
@@ -157,7 +173,7 @@ class AppConfig(BaseModel):
 
     LMDB_PATH: Optional[str] = "./data/lmdb"  # Default path for LMDB storage
     LMDB_DEFAULT_TTL: int = 1 * 60 * 60  # 1 hour
-    LMDB_MAP_SIZE: int = 2**30
+    LMDB_MAP_SIZE: int = 2 ** 30
     LMDB_CLEANUP_INTERVAL: int = 12 * 60 * 60  # 12 hours
 
     JWT_ACCESS_TOKEN_SECRET_KEY: str

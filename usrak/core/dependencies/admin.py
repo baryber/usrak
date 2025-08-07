@@ -9,12 +9,13 @@ from usrak.core.models.user import UserModelBase
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
 from usrak.core.dependencies.managers import get_user_model
+from usrak.core.dependencies.config_provider import get_router_config
 from usrak.core.dependencies.config_provider import get_app_config
 
 from usrak.core.db import get_db
 
 if TYPE_CHECKING:
-    from usrak.core.config_schemas import AppConfig
+    from usrak.core.config_schemas import AppConfig, RouterConfig
 
 
 async def get_admin(
@@ -27,19 +28,18 @@ async def get_admin(
     if not access_token:
         raise exc.UnauthorizedException
 
-    payload = decode_jwt_token(
+    jwt_payload = decode_jwt_token(
         token=access_token,
         jwt_secret=app_config.JWT_ACCESS_TOKEN_SECRET_KEY,
     )
-    if payload is None:
+    if jwt_payload is None:
         raise exc.InvalidAccessTokenException
 
-    internal_id = payload.user_identifier
-    if internal_id is None:
+    if jwt_payload.user_identifier is None:
         raise exc.InvalidAccessTokenException
 
     User = get_user_model()
-    user = session.exec(select(User).where(User.internal_id == internal_id)).first()
+    user = session.exec(select(User).where(User.user_identifier == jwt_payload.user_identifier)).first()
     if not user:
         raise exc.InvalidCredentialsException
 
@@ -48,7 +48,7 @@ async def get_admin(
 
     await auth_tokens_manager.validate_access_token(
         token=access_token,
-        user_identifier=internal_id,
+        user_identifier=jwt_payload.user_identifier,
         password_version=user.password_version,
     )
 

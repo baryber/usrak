@@ -46,13 +46,13 @@ async def refresh_token(
 
     new_refresh_token = await auth_tokens_manager.handle_refresh_token(
         refresh_token=rf_token,
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
         old_access_token=access_token,
     )
 
     new_access_token = await auth_tokens_manager.create_access_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
 

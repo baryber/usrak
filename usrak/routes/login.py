@@ -48,11 +48,11 @@ async def login_user(
         raise exc.UserDeactivatedException
 
     access_token = await auth_tokens_manager.create_access_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
     refresh_token = await auth_tokens_manager.create_refresh_token(
-        user_identifier=user.internal_id,
+        user_identifier=user.user_identifier,
         password_version=user.password_version,
     )
 
