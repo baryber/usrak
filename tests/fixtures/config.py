@@ -39,4 +39,5 @@ def router_config(app_config) -> RouterConfig:
     return RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
+        USER_IDENTIFIER_FIELD_NAME="super_id"
     )

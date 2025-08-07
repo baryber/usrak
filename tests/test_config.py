@@ -18,7 +18,7 @@ def test_app_config_creation(app_config: AppConfig):
     """Тестирует создание экземпляра AppConfig с базовыми значениями."""
     assert app_config.PROJECT_NAME == "Auth Service"
     assert app_config.JWT_ACCESS_TOKEN_SECRET_KEY == "test_access_secret"
-    assert app_config.FERNET_KEY == "YlVTb0tJclB2ZFZFYVl6N2dULWNkdkF2MUZJcVd1d01Wb25qR0NEVmN5OD0="
+    assert app_config.FERNET_KEY == "Y8RFpaIxSaAFNsB352tpLXl5znUw5anEKIZgclOezak="
 
 
 def test_app_config_missing_required_fields():
@@ -53,92 +53,108 @@ def test_router_config_kvs_validation():
     """Тестирует валидацию KEY_VALUE_STORE в RouterConfig."""
     cfg_in_memory = RouterConfig(USER_MODEL=TestUserModel,
                                  USER_READ_SCHEMA=TestUserReadSchema,
-                                 KEY_VALUE_STORE="in_memory")
+                                 KEY_VALUE_STORE="in_memory",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_in_memory.KEY_VALUE_STORE is InMemoryKeyValueStore
 
     cfg_redis = RouterConfig(USER_MODEL=TestUserModel,
                              USER_READ_SCHEMA=TestUserReadSchema,
-                             KEY_VALUE_STORE="redis")
+                             KEY_VALUE_STORE="redis",
+                             USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_redis.KEY_VALUE_STORE is RedisKeyValueStore
 
     cfg_lmdb = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            KEY_VALUE_STORE="lmdb")
+                            KEY_VALUE_STORE="lmdb",
+                            USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_lmdb.KEY_VALUE_STORE is LMDBKeyValueStore
 
     with pytest.raises(ValueError, match="Unknown KeyValueStore type: unknown_kvs"):
         RouterConfig(USER_MODEL=TestUserModel,
                      USER_READ_SCHEMA=TestUserReadSchema,
-                     KEY_VALUE_STORE="unknown_kvs")
+                     KEY_VALUE_STORE="unknown_kvs",
+                     USER_IDENTIFIER_FIELD_NAME="super_id")
 
 
 def test_router_config_notification_service_validation():
     """Тестирует валидацию NOTIFICATION_SERVICE в RouterConfig."""
     cfg_noop = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            NOTIFICATION_SERVICE="no_op")
+                            NOTIFICATION_SERVICE="no_op",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_noop.NOTIFICATION_SERVICE is NoOpNotificationService
 
     cfg_smtp = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            NOTIFICATION_SERVICE="smtp")
+                            NOTIFICATION_SERVICE="smtp",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_smtp.NOTIFICATION_SERVICE is SmtpNotificationService
 
     cfg_none = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            NOTIFICATION_SERVICE=None)
+                            NOTIFICATION_SERVICE=None,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_none.NOTIFICATION_SERVICE is NoOpNotificationService
 
     with pytest.raises(ValueError, match="Unknown NotificationService type: unknown_service"):
         RouterConfig(USER_MODEL=TestUserModel, USER_READ_SCHEMA=TestUserReadSchema,
-                     NOTIFICATION_SERVICE="unknown_service")
+                     NOTIFICATION_SERVICE="unknown_service",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
 
 
 def test_router_config_fast_api_rate_limiter_validation():
     """Тестирует валидацию FAST_API_RATE_LIMITER в RouterConfig."""
     cfg_noop = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            FAST_API_RATE_LIMITER="no_op")
+                            FAST_API_RATE_LIMITER="no_op",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_noop.FAST_API_RATE_LIMITER is NoOpFastApiRateLimiter
 
     cfg_none = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            FAST_API_RATE_LIMITER=None)
+                            FAST_API_RATE_LIMITER=None,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_none.FAST_API_RATE_LIMITER is NoOpFastApiRateLimiter
 
     with pytest.raises(NotImplementedError):
         # TODO: Remove after RedisFastApiRateLimiter implementation
         RouterConfig(USER_MODEL=TestUserModel,
                      USER_READ_SCHEMA=TestUserReadSchema,
-                     FAST_API_RATE_LIMITER="redis")
+                     FAST_API_RATE_LIMITER="redis",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
 
     with pytest.raises(ValueError, match="Unknown FastApiRateLimiter type: unknown_limiter"):
         RouterConfig(USER_MODEL=TestUserModel,
                      USER_READ_SCHEMA=TestUserReadSchema,
-                     FAST_API_RATE_LIMITER="unknown_limiter")
+                     FAST_API_RATE_LIMITER="unknown_limiter",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
 
 
 def test_router_config_smtp_client_validation():
     """Тестирует валидацию SMTP_CLIENT в RouterConfig."""
     cfg_noop = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            SMTP_CLIENT="no_op")
+                            SMTP_CLIENT="no_op",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_noop.SMTP_CLIENT is NoOpSMTPClient
 
     cfg_default = RouterConfig(USER_MODEL=TestUserModel,
                                USER_READ_SCHEMA=TestUserReadSchema,
-                               SMTP_CLIENT="default")
+                               SMTP_CLIENT="default",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_default.SMTP_CLIENT is SMTPClient
 
     cfg_none = RouterConfig(USER_MODEL=TestUserModel,
                             USER_READ_SCHEMA=TestUserReadSchema,
-                            SMTP_CLIENT=None)
+                            SMTP_CLIENT=None,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert cfg_none.SMTP_CLIENT is NoOpSMTPClient
 
     with pytest.raises(ValueError, match="Unknown SMTPClient type: unknown_client"):
         RouterConfig(USER_MODEL=TestUserModel,
                      USER_READ_SCHEMA=TestUserReadSchema,
-                     SMTP_CLIENT="unknown_client")
+                     SMTP_CLIENT="unknown_client",
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
 
 
 def test_config_providers(app_config: AppConfig, router_config: RouterConfig):
@@ -165,7 +181,8 @@ def test_router_config_oauth_flags_dependency():
 
     # По умолчанию ENABLE_OAUTH = False, поэтому остальные тоже False
     cfg_default = RouterConfig(USER_MODEL=TestUserModel,
-                               USER_READ_SCHEMA=TestUserReadSchema)
+                               USER_READ_SCHEMA=TestUserReadSchema,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert not cfg_default.ENABLE_OAUTH
     assert not cfg_default.ENABLE_GOOGLE_OAUTH
     assert not cfg_default.ENABLE_TELEGRAM_OAUTH
@@ -174,9 +191,10 @@ def test_router_config_oauth_flags_dependency():
     cfg_oauth_enabled = RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id",
         ENABLE_OAUTH=True,
         ENABLE_GOOGLE_OAUTH=True,
-        ENABLE_TELEGRAM_OAUTH=True
+        ENABLE_TELEGRAM_OAUTH=True,
     )
     assert cfg_oauth_enabled.ENABLE_OAUTH
     assert cfg_oauth_enabled.ENABLE_GOOGLE_OAUTH
@@ -186,6 +204,7 @@ def test_router_config_oauth_flags_dependency():
     cfg_oauth_partial = RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
+    USER_IDENTIFIER_FIELD_NAME = "super_id",
         ENABLE_OAUTH=True,
         ENABLE_GOOGLE_OAUTH=False,
         ENABLE_TELEGRAM_OAUTH=True
@@ -206,6 +225,7 @@ def test_router_config_oauth_flags_dependency():
     cfg_oauth_false_explicit_true = RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id",
         ENABLE_OAUTH=False,
         ENABLE_GOOGLE_OAUTH=True,  # Это значение будет установлено
         ENABLE_TELEGRAM_OAUTH=True  # И это
@@ -218,7 +238,8 @@ def test_router_config_oauth_flags_dependency():
 def test_router_config_redis_flags_dependency():
     """Тестирует зависимость флагов использования Redis от ENABLE_REDIS_CLIENT."""
     cfg_default = RouterConfig(USER_MODEL=TestUserModel,
-                               USER_READ_SCHEMA=TestUserReadSchema)
+                               USER_READ_SCHEMA=TestUserReadSchema,
+                                 USER_IDENTIFIER_FIELD_NAME="super_id")
     assert not cfg_default.ENABLE_REDIS_CLIENT
     assert not cfg_default.USE_REDIS_FOR_RATE_LIMITING
     assert not cfg_default.USE_REDIS_FOR_KV_STORE
@@ -226,9 +247,10 @@ def test_router_config_redis_flags_dependency():
     cfg_redis_enabled = RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
+        USER_IDENTIFIER_FIELD_NAME="super_id",
         ENABLE_REDIS_CLIENT=True,
         USE_REDIS_FOR_RATE_LIMITING=True,
-        USE_REDIS_FOR_KV_STORE=True
+        USE_REDIS_FOR_KV_STORE=True,
     )
     assert cfg_redis_enabled.ENABLE_REDIS_CLIENT
     assert cfg_redis_enabled.USE_REDIS_FOR_RATE_LIMITING
@@ -238,6 +260,7 @@ def test_router_config_redis_flags_dependency():
     cfg_redis_false_explicit_true = RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
+        USER_IDENTIFIER_FIELD_NAME="super_id",
         ENABLE_REDIS_CLIENT=False,
         USE_REDIS_FOR_RATE_LIMITING=True,  # Будет True
         USE_REDIS_FOR_KV_STORE=True  # Будет True
@@ -245,3 +268,20 @@ def test_router_config_redis_flags_dependency():
     assert not cfg_redis_false_explicit_true.ENABLE_REDIS_CLIENT
     assert cfg_redis_false_explicit_true.USE_REDIS_FOR_RATE_LIMITING
     assert cfg_redis_false_explicit_true.USE_REDIS_FOR_KV_STORE
+
+
+def test_router_config_user_identifier():
+    cfg = RouterConfig(
+        USER_MODEL=TestUserModel,
+        USER_READ_SCHEMA=TestUserReadSchema,
+        USER_IDENTIFIER_FIELD_NAME="super_id"
+    )
+    assert cfg.USER_IDENTIFIER_FIELD_NAME == "super_id"
+
+    with pytest.raises(ValidationError,
+                       match="USER_MODEL must have field 'non_existent_field', defined in USER_IDENTIFIER_FIELD_NAME"):
+        RouterConfig(
+            USER_MODEL=TestUserModel,
+            USER_READ_SCHEMA=TestUserReadSchema,
+            USER_IDENTIFIER_FIELD_NAME="non_existent_field"
+        )

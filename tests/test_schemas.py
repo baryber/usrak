@@ -160,7 +160,7 @@ def test_user_create_email_valid():
     assert data.password == "Password1Valid"  # Validated by PasswordValidatorMixin
 
 
-@pytest.mark.parametrize("invalid_password", ["short", "nouppercase1", "NODIGIT", "toolongpassword" * 10])
+@pytest.mark.parametrize("invalid_password", ["Sh0rt", "nouppercase1", "NooDIGIT", "tOOlongpassword" * 10])
 def test_user_create_email_invalid_password(invalid_password: str):
     expected_error_msg = "Password must contain at least one digit and one uppercase letter"
     if len(invalid_password) < 8:

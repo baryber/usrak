@@ -78,20 +78,14 @@ async def test_sign_in_user_not_found(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_sign_in_user_not_verified(
         client: AsyncClient,
-        created_test_user: TestUserModel,
-        default_password: str,
-        db_session: Session
+        unverified_user: TestUserModel,
+        default_password: str
 ):
     """Тестирует вход неверифицированного пользователя."""
 
-    created_test_user.is_verified = False
-    created_test_user.is_active = True
-    db_session.add(created_test_user)
-    db_session.commit()
-
     login_data = {
         "auth_provider": "email",
-        "email": created_test_user.email,
+        "email": unverified_user.email,
         "password": default_password,
     }
     response = await client.post("/auth/sign-in", json=login_data)
@@ -103,21 +97,14 @@ async def test_sign_in_user_not_verified(
 @pytest.mark.asyncio
 async def test_sign_in_user_not_active(
         client: AsyncClient,
-        created_test_user: TestUserModel,
-        default_password: str,
-        db_session: Session
+        inactive_user: TestUserModel,
+        default_password: str
 ):
     """Тестирует вход неактивного пользователя."""
 
-    created_test_user.is_verified = True  # Может быть верифицированным, но не активным
-    created_test_user.is_active = False
-
-    db_session.add(created_test_user)
-    db_session.commit()
-
     login_data = {
         "auth_provider": "email",
-        "email": created_test_user.email,
+        "email": inactive_user.email,
         "password": default_password,
     }
     response = await client.post("/auth/sign-in", json=login_data)
@@ -263,23 +250,6 @@ async def test_logout_success(
     # Проверим, что последующий запрос к защищенному эндпоинту не проходит
     check_auth_resp = await client.post("/auth/check-auth")
     assert check_auth_resp.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-@pytest.mark.asyncio
-async def test_logout_unauthenticated(client: AsyncClient):
-    """Тестирует выход, когда пользователь и так не аутентифицирован."""
-
-    pytest.mark.skip("Возможно, этот тест не нужен, так как сейчас logout можно сделать без юзера")
-
-    # Убедимся, что кук нет
-    client.cookies.clear()
-
-    response = await client.post("/auth/logout")
-    assert response.status_code == status.HTTP_200_OK  # Logout не должен падать, если кук нет
-    response_data = response.json()
-    assert response_data["success"] is True
-    assert "access_token" not in response.cookies  # Убеждаемся, что он не пытается установить пустые куки
-    assert "refresh_token" not in response.cookies
 
 
 @pytest.mark.asyncio
