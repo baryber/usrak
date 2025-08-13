@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "UsrAK"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     {name = "frankmurrey"},
     {name = "preposition17"},
@@ -94,4 +94,5 @@ strict = true
 plugins = ["pydantic.mypy"]
 show_error_codes = true
 warn_unused_configs = true
+
 ignore_missing_imports = true
