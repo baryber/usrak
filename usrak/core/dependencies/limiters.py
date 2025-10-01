@@ -115,3 +115,12 @@ def get_oauth_deps() -> list:
         seconds=app_config.OAUTH_RATE_LIMIT_SECONDS,
         identifier=identifiers.oauth_rate_identifier,
     )
+
+
+def get_api_token_deps() -> list:
+    app_config = get_app_config()
+    return _build_deps(
+        times=app_config.API_TOKEN_RATE_LIMIT_TIMES,
+        seconds=app_config.API_TOKEN_RATE_LIMIT_SECONDS,
+        identifier=identifiers.api_token_rate_identifier,
+    )
