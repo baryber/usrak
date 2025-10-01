@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlmodel import select, Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.responses import RedirectResponse
 from fastapi import Depends, Request
 
@@ -73,7 +74,7 @@ def google_oauth(
 
 async def google_oauth_callback(
         request: Request,
-        session: Session = Depends(get_db),
+        session: AsyncSession = Depends(get_db),
         app_config: "AppConfig" = Depends(get_app_config),
         auth_tokens_manager: AuthTokensManager = Depends(AuthTokensManager),
 ):
@@ -97,7 +98,8 @@ async def google_oauth_callback(
     google_mail = userinfo["email"]
 
     User = get_user_model()
-    user = session.exec(select(User).where(User.email == google_mail)).first()
+    result = await session.exec(select(User).where(User.email == google_mail))
+    user = result.first()
     if not user:
         user = User(
             auth_provider="google",
@@ -110,7 +112,7 @@ async def google_oauth_callback(
             signed_up_at=datetime.now(timezone.utc),
         )
         session.add(user)
-        session.commit()
+        await session.commit()
 
     if not user.is_active:
         raise exc.UserDeactivatedException

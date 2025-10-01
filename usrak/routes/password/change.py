@@ -1,5 +1,5 @@
-from sqlmodel import Session
 from fastapi import Depends
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from usrak.core.models.user import UserModelBase
 from usrak.core import exceptions as exc, enums
@@ -11,8 +11,8 @@ from usrak.core.db import get_db
 
 
 async def change_password(
-        session: Session = Depends(get_db),
-        user: UserModelBase = Depends(user_deps.get_user_if_verified_and_active)
+        session: AsyncSession = Depends(get_db),
+        user: UserModelBase = Depends(user_deps.get_user_verified_and_active)
 ):
     email = user.email
     if not email or user.auth_provider != "email":

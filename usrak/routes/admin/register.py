@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
-from sqlmodel import Session
 from fastapi import Depends
 from usrak.core.logger import logger
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from usrak.core import enums
 from usrak.core.models.user import UserModelBase
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 async def register_new_user(
         user_in: UserCreate,
-        session: Session = Depends(get_db),
+        session: AsyncSession = Depends(get_db),
         admin: UserModelBase = Depends(get_admin),
         router_config: "RouterConfig" = Depends(get_router_config)
 ):
