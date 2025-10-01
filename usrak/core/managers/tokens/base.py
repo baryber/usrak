@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
@@ -7,6 +8,7 @@ from usrak.core import exceptions as exc
 from usrak.core.schemas.security import JwtTokenPayloadData, SecretContext
 from usrak.core.security import decode_jwt_token, create_jwt_token, verify_secret_context
 from usrak.core.mixins import ConfigDependencyMixin
+from usrak.utils.timestamp import validate_unix_timestamp
 
 
 class TokensManagerBase(ConfigDependencyMixin):
@@ -118,31 +120,41 @@ class TokensManagerBase(ConfigDependencyMixin):
             self,
             token_type: str,
             user_identifier: Any,
-            exp: int | float,
+            expires_at: int | float,
             jti: str,
             jwt_secret: str,
             secret_context: SecretContext | None = None,
-    ):
+    ) -> str:
         """
         Create a new JWT token.
-        :param token_type: The type of the token (e.g., access, refresh).
-        :param user_identifier:
-        :param secret_context:
-        :param jwt_secret:
-        :param exp:
-        :return:
+
+        :param token_type: The type of the token (e.g., "access", "refresh").
+        :param user_identifier: A unique identifier of the user to include in the token payload
+                                (commonly a user_id, UUID, or email).
+        :param expires_at: Expiration time as a Unix timestamp (int or float, in seconds).
+                           Defines the exact moment when the token becomes invalid.
+        :param jti: A unique token identifier (JWT ID) used for tracking or invalidation.
+        :param jwt_secret: The secret key used to sign the token.
+        :param secret_context: Optional additional context for the secret (e.g., environment-specific keys
+                               or multi-tenant separation).
+        :return: The generated JWT token as a string.
         """
-        exp_date = datetime.now(timezone.utc) + timedelta(seconds=exp)
+        if expires_at:
+            expires_at = validate_unix_timestamp(expires_at)
+            if not expires_at:
+                raise ValueError("Invalid 'expires_at' timestamp provided.")
+
         payload = JwtTokenPayloadData(
             token_type=token_type,
             user_identifier=user_identifier,
             secret_context=secret_context,
-            exp=exp_date,
+            exp=expires_at,
             jti=jti,
         )
         token = create_jwt_token(data=payload, jwt_secret=jwt_secret)
         logger.info(f"|{token_type}| token created for user: {user_identifier}")
 
+        exp = expires_at - time.time()
         await self._set_token_jti(token_type=token_type, user_identifier=user_identifier, jti=jti, exp=exp)
 
         return token
