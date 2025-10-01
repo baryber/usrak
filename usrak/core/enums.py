@@ -1,18 +1,18 @@
 from enum import Enum
 
 
-class AuthProvider(Enum):
+class AuthProvider(str, Enum):
     EMAIL = 'email'
     GOOGLE = 'google'
     TELEGRAM = 'telegram'
 
 
-class RateLimiterObjectType(Enum):
+class RateLimiterObjectType(str, Enum):
     CODE = "code"
     LINK = "link"
 
 
-class ResponseNextStep(Enum):
+class ResponseNextStep(str, Enum):
     SIGNUP = "signup"
     VERIFY = "verify"
     LOGIN = "login"
@@ -23,8 +23,15 @@ class ResponseNextStep(Enum):
     WAIT_FOR_VERIFICATION = "wait_for_verification"
 
 
-class TokenTypes(Enum):
+class TokenTypes(str, Enum):
     ACCESS = "access_token"
     REFRESH = "refresh_token"
     SIGNUP_VERIFY = "signup_verify_token"
     PASSWORD_RESET = "password_reset_token"
+    API_TOKEN = "api_token"
+
+
+class AuthMode(str, Enum):
+    ACCESS_ONLY = "access_only"
+    API_ONLY = "api_only"
+    ANY = "any"
