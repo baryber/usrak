@@ -5,6 +5,7 @@ from .routes.logout import logout_user
 from .routes.refresh import refresh_token
 from .routes.user import user_profile
 from .routes.check_auth import check_auth
+from .routes.tokens import get_user_api_tokens, create_api_token, delete_api_token
 
 from .core.dependencies import limiters as limiter_deps
 
@@ -58,6 +59,30 @@ class AuthRouter(APIRouter):
             methods=["POST"],
             response_model=StatusResponse,
             dependencies=limiter_deps.get_refresh_token_deps()
+        )
+
+        self.add_api_route(
+            path="/api-tokens",
+            endpoint=get_user_api_tokens,
+            methods=["GET"],
+            response_model=StatusResponse,
+            dependencies=limiter_deps.get_api_token_deps()
+        )
+
+        self.add_api_route(
+            path="/api-tokens",
+            endpoint=create_api_token,
+            methods=["POST"],
+            response_model=StatusResponse,
+            dependencies=limiter_deps.get_api_token_deps()
+        )
+
+        self.add_api_route(
+            path="/api-tokens/{token_identifier}",
+            endpoint=delete_api_token,
+            methods=["DELETE"],
+            response_model=StatusResponse,
+            dependencies=limiter_deps.get_api_token_deps()
         )
 
         # Register sub-routers based on configuration
