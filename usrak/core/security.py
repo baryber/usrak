@@ -1,4 +1,6 @@
 import uuid
+import hmac
+import hashlib
 from typing import Optional
 
 import jwt
@@ -11,6 +13,7 @@ from usrak.core.dependencies.config_provider import get_app_config
 from usrak.core.schemas.security import JwtTokenPayloadData, SecretContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+token_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 
 def generate_jti() -> str:
@@ -27,6 +30,18 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def hash_token(token: str) -> str:
+    config = get_app_config()
+    return hmac.new(config.FERNET_KEY.encode("utf-8"), token.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def verify_token(plain_token: str, hashed_token: str) -> bool:
+    return hmac.compare_digest(
+        hashed_token,
+        hash_token(plain_token)
+    )
 
 
 def encrypt_token(token: str) -> str:
@@ -101,7 +116,3 @@ def verify_secret_context(context: SecretContext, expected: SecretContext) -> bo
             return False
 
     return True
-
-
-if __name__ == '__main__':
-    print(hash_password("Solbearer07"))
