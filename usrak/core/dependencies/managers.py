@@ -1,13 +1,9 @@
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
-from fastapi import Depends
-
 from ... import providers_type as pt
 
-from usrak.core.managers.tokens.auth import AuthTokensManager
-
-from usrak.core.dependencies.config_provider import get_app_config, get_router_config
+from usrak.core.dependencies.config_provider import get_router_config
 
 if TYPE_CHECKING:
     from usrak.core.config_schemas import AppConfig, RouterConfig

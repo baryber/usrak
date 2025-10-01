@@ -6,6 +6,7 @@ from .auth_app import RouterConfig
 
 # Models
 from .core.models.user import UserModelBase
+from .core.models.tokens import TokensModelBase
 
 
 # Schemas
