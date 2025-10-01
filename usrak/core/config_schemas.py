@@ -21,6 +21,18 @@ class RouterConfig(BaseModel):
     USER_IDENTIFIER_FIELD_NAME: str | None = Field(
         default="id", description="Identifier field name in USER_MODEL, used for user identification"
     )
+    TOKENS_MODEL: pt.TokensModelType = Field(
+        ..., description="Tokens' SQLModel class redefined from 'TokensModelBase'"
+    )
+    TOKENS_READ_SCHEMA: pt.TokensReadSchemaType = Field(
+        ..., description="Tokens' read schema class redefined from user's SQLModel class ('TOKENS_MODEL')"
+    )
+    TOKENS_IDENTIFIER_FIELD_NAME: str | None = Field(
+        default="id", description="Identifier field name in TOKENS_MODEL"
+    )
+    TOKENS_OWNER_FIELD_NAME: str | None = Field(
+        default="owner_id", description="Owner field name in TOKENS_MODEL (relation target)"
+    )
     KEY_VALUE_STORE: pt.KeyValueStoreType | Literal["in_memory", "redis", "lmdb"] = Field(
         default=LMDBKeyValueStore, description="KeyValueStore class"
     )
@@ -73,6 +85,25 @@ class RouterConfig(BaseModel):
                 f"USER_MODEL must have field '{self.USER_IDENTIFIER_FIELD_NAME}', defined in USER_IDENTIFIER_FIELD_NAME")
 
         setattr(self.USER_MODEL, "__id_field_name__", self.USER_IDENTIFIER_FIELD_NAME)
+        return self
+
+    @model_validator(mode="after")
+    def validate_token_identifier(self):
+        if not hasattr(self.TOKENS_MODEL, self.TOKENS_IDENTIFIER_FIELD_NAME):
+            raise ValueError(
+                f"TOKENS_MODEL must have field '{self.TOKENS_IDENTIFIER_FIELD_NAME}', "
+                "defined in TOKENS_IDENTIFIER_FIELD_NAME"
+            )
+
+        setattr(self.TOKENS_MODEL, "__id_field_name__", self.TOKENS_IDENTIFIER_FIELD_NAME)
+
+        if not hasattr(self.TOKENS_MODEL, self.TOKENS_OWNER_FIELD_NAME):
+            raise ValueError(
+                f"TOKENS_MODEL must have field '{self.TOKENS_OWNER_FIELD_NAME}', "
+                "defined in TOKENS_OWNER_FIELD_NAME"
+            )
+
+        setattr(self.TOKENS_MODEL, "__owner_field_name__", self.TOKENS_OWNER_FIELD_NAME)
         return self
 
     @field_validator("KEY_VALUE_STORE", mode="before")
@@ -179,6 +210,7 @@ class AppConfig(BaseModel):
     JWT_ACCESS_TOKEN_SECRET_KEY: str
     JWT_REFRESH_TOKEN_SECRET_KEY: str
     JWT_ONETIME_TOKEN_SECRET_KEY: str
+    JWT_API_TOKEN_SECRET_KEY: str
 
     ALGORITHM: str = "HS256"
     CODE_HASH_SALT: str
@@ -188,6 +220,7 @@ class AppConfig(BaseModel):
     REFRESH_TOKEN_EXPIRE_SEC: int = 7 * 60 * 60 * 24
     EMAIL_VERIFICATION_LINK_EXPIRE_SEC: int = 30 * 60
     PASSWORD_RESET_LINK_EXPIRE_SEC: int = 30 * 60
+    API_TOKEN_EXPIRE_SEC: int = 7 * 60 * 60 * 24
 
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
@@ -233,6 +266,9 @@ class AppConfig(BaseModel):
     OAUTH_RATE_LIMIT_TIMES: int = 3
     OAUTH_RATE_LIMIT_SECONDS: int = 60 * 30
 
+    API_TOKEN_RATE_LIMIT_TIMES: int = 100
+    API_TOKEN_RATE_LIMIT_SECONDS: int = 60
+
     MAX_ONE_TIME_CODE_CREATE_ATTEMPTS: int = 4
     ONE_TIME_TOKEN_TTL: int = 60 * 30
 
@@ -242,3 +278,5 @@ class AppConfig(BaseModel):
     MAIL_LINK_TTL: int = 60 * 30
 
     PASSWORD_CHANGE_COOLDOWN_SEC: int = 60 * 60 * 12
+
+    MAX_API_TOKENS_PER_USER: int = 5
