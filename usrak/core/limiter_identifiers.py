@@ -97,3 +97,8 @@ async def verify_signup_rate_identifier(request: Request) -> str:
 async def oauth_rate_identifier(request: Request) -> str:
     remote_addr = get_remote_address(request)
     return f"oauth:{remote_addr}"
+
+
+async def api_token_rate_identifier(request: Request) -> str:
+    remote_addr = get_remote_address(request)
+    return f"api_token:{remote_addr}"
