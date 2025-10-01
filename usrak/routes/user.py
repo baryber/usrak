@@ -6,7 +6,7 @@ from usrak.core.dependencies import user as user_deps
 
 
 async def get_user(
-    user: UserModelBase = Depends(user_deps.get_user_if_verified_and_active)
+    user: UserModelBase = Depends(user_deps.get_user_verified_and_active)
 ):
     return StatusResponse(
         status=True,
@@ -20,7 +20,7 @@ async def get_user(
 
 
 async def user_profile(
-    user: UserModelBase = Depends(user_deps.get_user_if_verified_and_active)
+    user: UserModelBase = Depends(user_deps.get_user_verified_and_active)
 ):
 
     return StatusResponse(

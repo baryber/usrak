@@ -36,7 +36,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str =
 async def refresh_token(
         request: Request,
         response: Response,
-        user: UserModelBase = Depends(user_deps.get_user_if_verified_and_active),
+        user: UserModelBase = Depends(user_deps.get_user_verified_and_active),
         auth_tokens_manager: AuthTokensManager = Depends(AuthTokensManager),
 ):
     rf_token = request.cookies.get("refresh_token")

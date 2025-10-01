@@ -26,6 +26,18 @@ def get_user_read_schema() -> pt.UserReadSchemaType:
 
 
 @lru_cache()
+def get_tokens_model() -> pt.TokensModelType:
+    config = get_router_config()
+    return config.TOKENS_MODEL
+
+
+@lru_cache()
+def get_tokens_read_schema() -> pt.TokensReadSchemaType:
+    config = get_router_config()
+    return config.TOKENS_READ_SCHEMA
+
+
+@lru_cache()
 def get_key_value_store() -> pt.KeyValueStoreABS:
     config = get_router_config()
     return config.KEY_VALUE_STORE()

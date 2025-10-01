@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import Depends
 
 from usrak.core import enums
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 async def signup(
         user_in: UserCreate,
-        session: Session = Depends(get_db),
+        session: AsyncSession = Depends(get_db),
         router_config: "RouterConfig" = Depends(get_router_config),
         mail_signup_manager: MailSignupManager = Depends(MailSignupManager)
 ):
@@ -55,7 +55,7 @@ async def signup(
 
 async def send_signup_link(
         data: EmailRequestCodeInput,
-        session: Session = Depends(get_db)
+        session: AsyncSession = Depends(get_db)
 ):
     signup_manager = MailSignupManager(session)
 
@@ -73,7 +73,7 @@ async def send_signup_link(
 
 async def verify_signup_link(
         data: EmailVerificationInput,
-        session: Session = Depends(get_db)
+        session: AsyncSession = Depends(get_db)
 ):
     signup_manager = MailSignupManager(session)
 

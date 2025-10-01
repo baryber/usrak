@@ -57,3 +57,11 @@ class AccessDeniedException(HTTPException):
             detail="Access denied",
         )
 
+
+class TooManyAPIKeysException(HTTPException):
+    def __init__(self, max_keys: int):
+        super().__init__(
+            status_code=400,
+            detail=f"Too many API keys, max is {max_keys}",
+        )
+

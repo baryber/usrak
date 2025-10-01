@@ -1,9 +1,18 @@
+import time
+from typing import Optional
+from sqlmodel import select, func
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from usrak.core.logger import logger
 
 from usrak.core import exceptions as exc, enums
 from usrak.core.security import generate_jti
 from usrak.core.schemas.security import SecretContext
 from usrak.core.managers.tokens.base import TokensManagerBase
+from usrak.core.dependencies.config_provider import get_app_config
+from usrak.core.dependencies.managers import get_tokens_model
+
+from usrak.core.security import hash_token
 
 
 class AuthTokensManager(TokensManagerBase):
@@ -21,10 +30,11 @@ class AuthTokensManager(TokensManagerBase):
             password_version: int,
     ) -> str:
         jti = generate_jti()
+        expires_at = int(time.time()) + self.app_config.ACCESS_TOKEN_EXPIRE_SEC
         token = await self.create_token(
             token_type=enums.TokenTypes.ACCESS.value,
             user_identifier=user_identifier,
-            exp=self.app_config.ACCESS_TOKEN_EXPIRE_SEC,
+            expires_at=expires_at,
             jti=jti,
             jwt_secret=self.app_config.JWT_ACCESS_TOKEN_SECRET_KEY,
             secret_context=SecretContext(
@@ -50,10 +60,11 @@ class AuthTokensManager(TokensManagerBase):
             password_version: int,
     ) -> str:
         jti = generate_jti()
+        expires_at = int(time.time()) + self.app_config.REFRESH_TOKEN_EXPIRE_SEC
         token = await self.create_token(
             token_type=enums.TokenTypes.REFRESH.value,
             user_identifier=user_identifier,
-            exp=self.app_config.REFRESH_TOKEN_EXPIRE_SEC,
+            expires_at=expires_at,
             jti=jti,
             jwt_secret=self.app_config.JWT_REFRESH_TOKEN_SECRET_KEY,
             secret_context=SecretContext(
@@ -72,6 +83,109 @@ class AuthTokensManager(TokensManagerBase):
         )
 
         return token
+
+    async def create_api_token(
+            self,
+            user_identifier: str,
+            session: AsyncSession,
+            name: Optional[str] = None,
+            expires_at: Optional[int] = None,
+            whitelisted_ip_addresses: Optional[list[str]] = None,
+    ) -> str:
+        app_config = get_app_config()
+        tokens_model = get_tokens_model()
+
+        stmt = select(func.count()).select_from(tokens_model).where(
+            tokens_model.owner_identifier == user_identifier,
+            tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
+            tokens_model.is_deleted == False,
+        )
+
+        count: int = await session.scalar(stmt)
+        if count >= app_config.MAX_API_TOKENS_PER_USER:
+            raise exc.TooManyAPIKeysException(max_keys=app_config.MAX_API_TOKENS_PER_USER)
+
+        jti = generate_jti()
+        token = await self.create_token(
+            token_type=enums.TokenTypes.API_TOKEN.value,
+            user_identifier=user_identifier,
+            expires_at=expires_at,
+            jti=jti,
+            jwt_secret=self.app_config.JWT_API_TOKEN_SECRET_KEY,
+            secret_context=SecretContext(ip_addresses=whitelisted_ip_addresses) if whitelisted_ip_addresses else None
+        )
+
+        hashed_token = hash_token(token)
+
+        token_model = tokens_model(
+            owner_identifier=user_identifier,
+            name=name,
+            token=hashed_token,
+            token_type=enums.TokenTypes.API_TOKEN.value,
+            expires_at=expires_at,
+        )
+        session.add(token_model)
+        await session.commit()
+
+        return token
+
+    async def delete_api_token(
+            self,
+            token_identifier: str,
+            user_identifier: str,
+            session: AsyncSession,
+    ) -> None:
+        tokens_model = get_tokens_model()
+
+        stmt = select(tokens_model).where(
+            tokens_model.owner_identifier == user_identifier,
+            tokens_model.token_identifier == token_identifier,
+            tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
+            tokens_model.is_deleted == False,
+        )
+        result = await session.exec(stmt)
+        token_obj = result.first()
+        if not token_obj:
+            raise exc.InvalidTokenException
+
+        token_obj.is_deleted = True
+        session.add(token_obj)
+        await session.commit()
+
+    async def validate_api_token(
+            self,
+            token: str,
+            user_identifier: str,
+            session: AsyncSession,
+            whitelisted_ip_addresses: Optional[list[str]] = None
+    ) -> None:
+        await self.validate_token(
+            token=token,
+            jwt_secret=self.app_config.JWT_API_TOKEN_SECRET_KEY,
+            user_identifier=user_identifier,
+            secret_context=SecretContext(ip_addresses=whitelisted_ip_addresses) if whitelisted_ip_addresses else None
+        )
+        tokens_model = get_tokens_model()
+
+        hashed_token = hash_token(token)
+
+        stmt = select(tokens_model).where(
+            tokens_model.owner_identifier == user_identifier,
+            tokens_model.token == hashed_token,
+            tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
+            tokens_model.is_deleted == False,
+        )
+
+        result = await session.exec(stmt)
+        maybe_obj = result.one_or_none()
+
+        if maybe_obj is None:
+            raise exc.InvalidTokenException
+
+        token_obj = maybe_obj if isinstance(maybe_obj, tokens_model) else maybe_obj[0]
+
+        if not token_obj:
+            raise exc.InvalidTokenException
 
     async def validate_access_token(
             self,
@@ -146,36 +260,3 @@ class AuthTokensManager(TokensManagerBase):
             token_type=enums.TokenTypes.REFRESH.value,
             user_identifier=user_identifier
         )
-
-
-if __name__ == '__main__':
-    auth_manager = AuthTokensManager()
-
-    # Example usage
-    user_identifier = "user12345"
-    password_version = 1
-
-    async def example_usage():
-        # access_token = await auth_tokens_manager.create_access_token(user_identifier, password_version)
-        # print(f"Access Token: {access_token}")
-        #
-        # refresh_token = await auth_tokens_manager.create_refresh_token(user_identifier, password_version)
-        # print(f"Refresh Token: {refresh_token}")
-
-        access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzX3Rva2VuIiwidXNlcl9pZGVudGlmaWVyIjoidXNlcjEyMzQ1IiwiZXhwIjoxNzQ3OTkzNTQ3LCJqdGkiOiI2YjMxNDFhMC03N2EyLTRmMGMtOTc1Yi05YjEzZjA4ZmZkNjEiLCJzZWNyZXRfY29udGV4dCI6eyJwYXNzd29yZF92ZXJzaW9uIjoxLCJwdXJwb3NlIjpudWxsLCJpcF9hZGRyZXNzIjpudWxsfX0.2FIVt2HUELyRq4Kq1ugM2cHuauk31Xv0T8HOkugMq8A"
-        ref = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaF90b2tlbiIsInVzZXJfaWRlbnRpZmllciI6InVzZXIxMjM0NSIsImV4cCI6MTc0ODU5NzUwNSwianRpIjoiZGE4ZTcxN2ItMmQyYi00MjhjLTkxNTItYzM5MjEyZTVhZDNlIiwic2VjcmV0X2NvbnRleHQiOnsicGFzc3dvcmRfdmVyc2lvbiI6MSwicHVycG9zZSI6bnVsbCwiaXBfYWRkcmVzcyI6bnVsbH19._crjd99s_XPjDB1K_JnyJ-fqtPyZWgi-ufN3M15tx-w"
-
-        await auth_manager.validate_access_token(access_token, password_version, user_identifier)
-        print("Access token validated successfully.")
-
-        # new_ref = await auth_tokens_manager.handle_refresh_token(
-        #     refresh_token=ref,
-        #     user_identifier=user_identifier,
-        #     old_access_token=access_token,
-        #     password_version=password_version
-        # )
-        # print(new_ref)
-
-    import asyncio
-
-    asyncio.run(example_usage())

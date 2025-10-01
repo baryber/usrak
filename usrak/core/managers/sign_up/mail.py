@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from fastapi import Depends
 
 from sqlmodel import Session, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from usrak.core import exceptions as exc, dependencies as deps
 from usrak.core.models.user import UserModelBase
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 class MailSignupManager:
     def __init__(
             self,
-            session: Session = Depends(get_db),
+            session: AsyncSession = Depends(get_db),
             app_config: "AppConfig" = Depends(get_app_config),
             router_config: "RouterConfig" = Depends(get_router_config),
             one_time_tokens_manager: OneTimeTokensManager = Depends(OneTimeTokensManager)
@@ -33,9 +34,10 @@ class MailSignupManager:
         self.router_config = router_config
         self.tokens_manager = one_time_tokens_manager
 
-    def _get_user_by_email(self, email: str) -> UserModelBase:
+    async def _get_user_by_email(self, email: str) -> UserModelBase:
         User = get_user_model()
-        user = self.session.exec(select(User).where(User.email == email)).first()
+        result = await self.session.exec(select(User).where(User.email == email))
+        user = result.first()
         if not user or user.auth_provider != "email":
             raise exc.InvalidCredentialsException
 
@@ -55,7 +57,8 @@ class MailSignupManager:
         User = get_user_model()
         UserRead = get_user_read_schema()
 
-        user = self.session.exec(select(User).where(User.email == email)).first()
+        result = await self.session.exec(select(User).where(User.email == email))
+        user = result.first()
         if user:
             if user.is_verified:
                 raise exc.UserAlreadyExistsException
@@ -74,12 +77,12 @@ class MailSignupManager:
             password_version=1,
         )
         self.session.add(new_user)
-        self.session.commit()
+        await self.session.commit()
 
         return UserRead.from_orm(new_user)  # type: ignore[return-value]
 
     async def send_link(self, email: str, plain_password: str):
-        user = self._get_user_by_email(email)
+        user = await self._get_user_by_email(email)
         if user.is_verified or user.is_active:
             raise exc.VerificationFailedException
 
@@ -126,4 +129,4 @@ class MailSignupManager:
         user.is_verified = True
 
         self.session.add(user)
-        self.session.commit()
+        await self.session.commit()

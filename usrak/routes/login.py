@@ -4,6 +4,7 @@ from fastapi import Depends
 from fastapi.responses import Response
 
 from sqlmodel import select, Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from usrak.core import exceptions as exc
 from usrak.core.schemas.user import UserLogin
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 async def login_user(
         response: Response,
         user_in: UserLogin,
-        session: Session = Depends(get_db),
+        session: AsyncSession = Depends(get_db),
         app_config: "AppConfig" = Depends(get_app_config),
         router_config: "RouterConfig" = Depends(get_router_config),
         auth_tokens_manager: AuthTokensManager = Depends(AuthTokensManager)
@@ -31,7 +32,8 @@ async def login_user(
     email = user_in.email.lower().strip()
 
     UserModel = router_config.USER_MODEL
-    user = session.exec(select(UserModel).where(UserModel.email == email)).first()
+    result = await session.exec(select(UserModel).where(UserModel.email == email))
+    user = result.first()
     if not user:
         raise exc.InvalidCredentialsException
 

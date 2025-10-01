@@ -1,7 +1,8 @@
 from typing import TYPE_CHECKING
 
-from sqlmodel import select, Session
+from sqlmodel import select
 from fastapi import Depends, Request
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from usrak.core import exceptions as exc
 from usrak.core.security import decode_jwt_token
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 async def get_admin(
         request: Request,
-        session: Session = Depends(get_db),
+        session: AsyncSession = Depends(get_db),
         app_config: "AppConfig" = Depends(get_app_config),
         auth_tokens_manager: AuthTokensManager = Depends(AuthTokensManager),
 ) -> UserModelBase:
@@ -39,7 +40,8 @@ async def get_admin(
         raise exc.InvalidAccessTokenException
 
     User = get_user_model()
-    user = session.exec(select(User).where(User.user_identifier == jwt_payload.user_identifier)).first()
+    result = await session.exec(select(User).where(User.user_identifier == jwt_payload.user_identifier))
+    user = result.first()
     if not user:
         raise exc.InvalidCredentialsException
 

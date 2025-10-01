@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 from fastapi import Depends
-from sqlmodel import select, Session
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.responses import RedirectResponse
 
 from usrak.core import exceptions as exc
@@ -67,7 +68,7 @@ def set_auth_cookies(
 
 async def telegram_auth(
         user: TelegramUser,
-        session: Session = Depends(get_db),
+        session: AsyncSession = Depends(get_db),
         app_config: "AppConfig" = Depends(get_app_config),
         auth_tokens_manager: AuthTokensManager = Depends(AuthTokensManager)
 ):
@@ -80,7 +81,8 @@ async def telegram_auth(
         raise exc.InvalidTelegramAuthException
 
     User = get_user_model()
-    user = session.exec(select(User).where(User.external_id == user.id)).first()
+    result = await session.exec(select(User).where(User.external_id == str(user.id)))
+    user = result.first()
     if not user:
         user = User(
             auth_provider="telegram",
