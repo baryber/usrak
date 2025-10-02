@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, ClassVar
 
 from sqlmodel import SQLModel, Field, Column, TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.hybrid import hybrid_property
 
 
@@ -11,6 +12,11 @@ class TokensModelBase(SQLModel, table=False):
     token: str = Field(nullable=False, max_length=512, index=True, unique=True)
     token_type: str = Field(nullable=False, max_length=64)
     name: Optional[str] = Field(default=None, max_length=255, nullable=True)
+    whitelisted_ip_addresses: Optional[list[str]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+        description="List of whitelisted IP addresses",
+    )
 
     is_deleted: bool = Field(default=False, description="Token deletion flag")
 
