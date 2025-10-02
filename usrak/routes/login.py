@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from fastapi import Depends
 from fastapi.responses import Response
 
-from sqlmodel import select, Session
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from usrak.core import exceptions as exc
