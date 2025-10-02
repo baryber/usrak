@@ -1,6 +1,7 @@
 import uuid
 import hmac
 import hashlib
+import secrets
 from typing import Optional
 
 import jwt
@@ -116,3 +117,7 @@ def verify_secret_context(context: SecretContext, expected: SecretContext) -> bo
             return False
 
     return True
+
+
+def create_secret_token(length: int = 32) -> str:
+    return secrets.token_urlsafe(length)
