@@ -15,3 +15,5 @@ redis==6.2.0
 fakeredis==2.29.0
 uvicorn==0.34.3
 build==1.2.2.post1
+cachetools==6.1.0
+psycopg[binary,async]==3.2.3
