@@ -1,6 +1,5 @@
 from typing import Optional
 
-from sqlmodel import Session
 from fastapi import Response, Request, Depends
 
 from usrak.core import exceptions as exc

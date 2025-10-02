@@ -10,13 +10,12 @@ from usrak.core.models.user import UserModelBase
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
 from usrak.core.dependencies.managers import get_user_model
-from usrak.core.dependencies.config_provider import get_router_config
 from usrak.core.dependencies.config_provider import get_app_config
 
 from usrak.core.db import get_db
 
 if TYPE_CHECKING:
-    from usrak.core.config_schemas import AppConfig, RouterConfig
+    from usrak.core.config_schemas import AppConfig
 
 
 async def get_admin(

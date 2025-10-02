@@ -1,12 +1,8 @@
 from functools import lru_cache
-from typing import TYPE_CHECKING
 
 from ... import providers_type as pt
 
 from usrak.core.dependencies.config_provider import get_router_config
-
-if TYPE_CHECKING:
-    from usrak.core.config_schemas import AppConfig, RouterConfig
 
 
 @lru_cache()

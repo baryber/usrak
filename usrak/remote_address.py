@@ -1,9 +1,10 @@
 from starlette.requests import Request
+from starlette.requests import HTTPConnection
 
 from usrak.core.dependencies.config_provider import get_app_config
 
 
-def get_remote_address(request: Request) -> str:
+def get_remote_address(request: Request | HTTPConnection) -> str:
     client_host = request.client.host if request.client else "unknown"
 
     x_forwarded_for = request.headers.get("X-Forwarded-For")

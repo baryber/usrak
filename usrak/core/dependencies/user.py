@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Optional
 
-from fastapi import Depends, Request, Security
-from fastapi.security.api_key import APIKeyHeader
+from fastapi import Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette.requests import HTTPConnection
 
 from usrak.core import exceptions as exc
 from usrak.core.managers.tokens.auth import AuthTokensManager
@@ -17,38 +17,29 @@ from usrak.core.resolvers.user import (
 if TYPE_CHECKING:
     from usrak.core.config_schemas import AppConfig, RouterConfig
 
-api_token_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def get_cached_user(connection: HTTPConnection):
+    return getattr(connection.state, "user", None)
 
 
-def get_access_token_from_cookies(request: Request) -> Optional[str]:
-    return request.cookies.get("access_token")
-
-
-def get_api_token_from_header(api_token: Optional[str] = Security(api_token_header)) -> Optional[str]:
-    return api_token
-
-
-def get_cached_user(request: Request):
-    return getattr(request.state, "user", None)
-
-
-def set_cached_user(request: Request, user):
-    setattr(request.state, "user", user)
+def set_cached_user(connection: HTTPConnection, user):
+    setattr(connection.state, "user", user)
 
 
 def build_optional_user_dep(mode: enums.AuthMode = enums.AuthMode.ANY):
     async def dep(
-            request: Request,
-            access_token: Optional[str] = Depends(get_access_token_from_cookies),
-            api_token: Optional[str] = Depends(get_api_token_from_header),
+            connection: HTTPConnection,
             session: AsyncSession = Depends(get_db),
             app_config: "AppConfig" = Depends(get_app_config),
             router_config: "RouterConfig" = Depends(get_router_config),
             tokens_manager: AuthTokensManager = Depends(AuthTokensManager),
     ):
-        cached = get_cached_user(request)
+        cached = get_cached_user(connection)
         if cached is not None:
             return cached
+
+        access_token: Optional[str] = connection.cookies.get("access_token")
+        api_token: Optional[str] = connection.headers.get("X-API-Key")
 
         try:
             if mode in (enums.AuthMode.ACCESS_ONLY, enums.AuthMode.ANY):
@@ -57,16 +48,20 @@ def build_optional_user_dep(mode: enums.AuthMode = enums.AuthMode.ANY):
                         access_token, session, app_config, router_config, tokens_manager
                     )
                     if user:
-                        set_cached_user(request, user)
+                        set_cached_user(connection, user)
                         return user
 
             if mode in (enums.AuthMode.API_ONLY, enums.AuthMode.ANY):
                 if api_token:
                     user = await resolve_user_from_api_token(
-                        request, api_token, session, app_config, router_config, tokens_manager
+                        connection=connection,
+                        api_token=api_token,
+                        session=session,
+                        router_config=router_config,
+                        app_config=app_config,
                     )
                     if user:
-                        set_cached_user(request, user)
+                        set_cached_user(connection, user)
                         return user
 
         except (exc.UnauthorizedException, exc.InvalidTokenException):

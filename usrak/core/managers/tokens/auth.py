@@ -12,7 +12,7 @@ from usrak.core.managers.tokens.base import TokensManagerBase
 from usrak.core.dependencies.config_provider import get_app_config
 from usrak.core.dependencies.managers import get_tokens_model
 
-from usrak.core.security import hash_token
+from usrak.core.security import hash_token, create_secret_token
 
 
 class AuthTokensManager(TokensManagerBase):
@@ -93,36 +93,30 @@ class AuthTokensManager(TokensManagerBase):
             whitelisted_ip_addresses: Optional[list[str]] = None,
     ) -> str:
         app_config = get_app_config()
-        tokens_model = get_tokens_model()
+        Tokens = get_tokens_model()
 
-        stmt = select(func.count()).select_from(tokens_model).where(
-            tokens_model.owner_identifier == user_identifier,
-            tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
-            tokens_model.is_deleted == False,
+        stmt = select(func.count()).select_from(Tokens).where(
+            Tokens.owner_identifier == user_identifier,
+            Tokens.token_type == enums.TokenTypes.API_TOKEN.value,
+            Tokens.is_deleted == False,
         )
 
         count: int = await session.scalar(stmt)
         if count >= app_config.MAX_API_TOKENS_PER_USER:
             raise exc.TooManyAPIKeysException(max_keys=app_config.MAX_API_TOKENS_PER_USER)
 
-        jti = generate_jti()
-        token = await self.create_token(
-            token_type=enums.TokenTypes.API_TOKEN.value,
-            user_identifier=user_identifier,
-            expires_at=expires_at,
-            jti=jti,
-            jwt_secret=self.app_config.JWT_API_TOKEN_SECRET_KEY,
-            secret_context=SecretContext(ip_addresses=whitelisted_ip_addresses) if whitelisted_ip_addresses else None
-        )
+        token = create_secret_token()
 
         hashed_token = hash_token(token)
 
-        token_model = tokens_model(
-            owner_identifier=user_identifier,
+        token_model = Tokens(
+            **{Tokens.__owner_field_name__: user_identifier},
             name=name,
             token=hashed_token,
             token_type=enums.TokenTypes.API_TOKEN.value,
             expires_at=expires_at,
+            whitelisted_ip_addresses=whitelisted_ip_addresses,
+            is_deleted=False,
         )
         session.add(token_model)
         await session.commit()
@@ -137,8 +131,10 @@ class AuthTokensManager(TokensManagerBase):
     ) -> None:
         tokens_model = get_tokens_model()
 
+        owner_col = getattr(tokens_model, tokens_model.__owner_field_name__)
+
         stmt = select(tokens_model).where(
-            tokens_model.owner_identifier == user_identifier,
+            owner_col == user_identifier,
             tokens_model.token_identifier == token_identifier,
             tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
             tokens_model.is_deleted == False,
@@ -169,8 +165,10 @@ class AuthTokensManager(TokensManagerBase):
 
         hashed_token = hash_token(token)
 
+        owner_col = getattr(tokens_model, tokens_model.__owner_field_name__)
+
         stmt = select(tokens_model).where(
-            tokens_model.owner_identifier == user_identifier,
+            owner_col == user_identifier,
             tokens_model.token == hashed_token,
             tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
             tokens_model.is_deleted == False,
