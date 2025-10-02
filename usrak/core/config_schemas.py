@@ -31,7 +31,10 @@ class RouterConfig(BaseModel):
         default="id", description="Identifier field name in TOKENS_MODEL"
     )
     TOKENS_OWNER_FIELD_NAME: str | None = Field(
-        default="owner_id", description="Owner field name in TOKENS_MODEL (relation target)"
+        default="user_id", description="Owner field name in TOKENS_MODEL (relation target)"
+    )
+    TOKENS_OWNER_RELATION_FIELD_NAME: str | None = Field(
+        default="user", description="Owner relation field name in TOKENS_MODEL"
     )
     KEY_VALUE_STORE: pt.KeyValueStoreType | Literal["in_memory", "redis", "lmdb"] = Field(
         default=LMDBKeyValueStore, description="KeyValueStore class"
@@ -280,3 +283,4 @@ class AppConfig(BaseModel):
     PASSWORD_CHANGE_COOLDOWN_SEC: int = 60 * 60 * 12
 
     MAX_API_TOKENS_PER_USER: int = 5
+    API_TOKEN_RESOLVER_CACHE_TTL: int = 60
