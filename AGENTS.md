@@ -14,3 +14,6 @@ Pytest with `pytest-asyncio` powers the suite, so cover asynchronous paths and n
 
 ## Commit & Pull Request Guidelines
 History favors short, imperative subjects (e.g., `ADD create_secret_token`, `CLR response schemas`). Expand when necessary in the body with context, migrations, or rollback hints. Reference related issues with `Refs #123` or `Fixes #123`. Pull requests should summarize behavior changes, list touched modules, call out new environment variables, and include updated API responses or screenshots when user-visible. Always run `python -m pytest`, `ruff check`, and `mypy` before requesting review.
+
+## Tips
+- Use python from `venv/` directory. 
