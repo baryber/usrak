@@ -9,7 +9,12 @@ from .routes.tokens import get_user_api_tokens, create_api_token, delete_api_tok
 
 from .core.dependencies import limiters as limiter_deps
 
-from .core.schemas.response import StatusResponse
+from .core.schemas.response import (
+    CommonResponse,
+    CommonDataResponse,
+    CommonNextStepResponse,
+    CommonDataNextStepResponse
+)
 from .core.config_schemas import RouterConfig
 
 
@@ -36,28 +41,28 @@ class AuthRouter(APIRouter):
             path="/sign-in",
             endpoint=login_user,
             methods=["POST"],
-            response_model=StatusResponse,
+            response_model=CommonResponse,
             dependencies=limiter_deps.get_login_deps()
         )
         self.add_api_route(
             path="/logout",
             endpoint=logout_user,
             methods=["POST"],
-            response_model=StatusResponse,
+            response_model=CommonResponse,
             dependencies=limiter_deps.get_logout_deps()
         )
         self.add_api_route(
             path="/check-auth",
             endpoint=check_auth,
             methods=["POST"],
-            response_model=StatusResponse,
+            response_model=CommonDataResponse,
         )
 
         self.add_api_route(
             path="/refresh",
             endpoint=refresh_token,
             methods=["POST"],
-            response_model=StatusResponse,
+            response_model=CommonResponse,
             dependencies=limiter_deps.get_refresh_token_deps()
         )
 
@@ -65,7 +70,7 @@ class AuthRouter(APIRouter):
             path="/api-tokens",
             endpoint=get_user_api_tokens,
             methods=["GET"],
-            response_model=StatusResponse,
+            response_model=CommonDataResponse,
             dependencies=limiter_deps.get_api_token_deps()
         )
 
@@ -73,7 +78,7 @@ class AuthRouter(APIRouter):
             path="/api-tokens",
             endpoint=create_api_token,
             methods=["POST"],
-            response_model=StatusResponse,
+            response_model=CommonDataResponse,
             dependencies=limiter_deps.get_api_token_deps()
         )
 
@@ -81,7 +86,7 @@ class AuthRouter(APIRouter):
             path="/api-tokens/{token_identifier}",
             endpoint=delete_api_token,
             methods=["DELETE"],
-            response_model=StatusResponse,
+            response_model=CommonDataResponse,
             dependencies=limiter_deps.get_api_token_deps()
         )
 
@@ -118,7 +123,7 @@ class AuthRouter(APIRouter):
                 path="",
                 endpoint=signup,
                 methods=["POST"],
-                response_model=StatusResponse,
+                response_model=CommonDataNextStepResponse,
                 dependencies=limiter_deps.get_signup_deps()
             )
             if self.router_config.USE_VERIFICATION_LINKS_FOR_SIGNUP:
@@ -126,7 +131,7 @@ class AuthRouter(APIRouter):
                     path="/send_link",
                     endpoint=send_signup_link,
                     methods=["POST"],
-                    response_model=StatusResponse,
+                    response_model=CommonNextStepResponse,
                     dependencies=limiter_deps.get_verify_signup_deps()
                 )
 
@@ -134,7 +139,7 @@ class AuthRouter(APIRouter):
                     path="/verify",
                     endpoint=verify_signup_link,
                     methods=["POST"],
-                    response_model=StatusResponse,
+                    response_model=CommonNextStepResponse,
                     dependencies=limiter_deps.get_verify_signup_deps()
                 )
 
@@ -150,14 +155,14 @@ class AuthRouter(APIRouter):
                     path="/google",
                     endpoint=google_oauth,
                     methods=["POST"],
-                    response_model=StatusResponse,
+                    response_model=CommonDataResponse,
                     dependencies=limiter_deps.get_oauth_deps()
                 )
                 oauth_router.add_api_route(
                     path="/google/callback",
                     endpoint=google_oauth_callback,
                     methods=["GET"],
-                    response_model=StatusResponse,
+                    response_model=CommonDataResponse,
                     dependencies=limiter_deps.get_oauth_deps()
                 )
 
@@ -168,7 +173,7 @@ class AuthRouter(APIRouter):
                     path="/telegram",
                     endpoint=telegram_auth,
                     methods=["POST"],
-                    response_model=StatusResponse,
+                    response_model=CommonDataResponse,
                     dependencies=limiter_deps.get_oauth_deps()
                 )
 
@@ -181,23 +186,31 @@ class AuthRouter(APIRouter):
             self.include_router(password_router)
             # Password reset routes
             password_router.add_api_route(
-                "/forgot", forgot_password, methods=["POST"],
-                response_model=StatusResponse,
+                "/forgot",
+                forgot_password,
+                methods=["POST"],
+                response_model=CommonResponse,
                 dependencies=limiter_deps.get_request_reset_code_deps()
             )
             password_router.add_api_route(
-                "/change", change_password, methods=["POST"],
-                response_model=StatusResponse,
+                "/change",
+                change_password,
+                methods=["POST"],
+                response_model=CommonNextStepResponse,
                 dependencies=limiter_deps.get_request_reset_code_deps()
             )
             password_router.add_api_route(
-                "/verify_token", verify_token, methods=["POST"],
-                response_model=StatusResponse,
+                "/verify_token",
+                verify_token,
+                methods=["POST"],
+                response_model=CommonResponse,
                 dependencies=limiter_deps.get_request_reset_code_deps()
             )
             password_router.add_api_route(
-                "/reset", reset_password, methods=["POST"],
-                response_model=StatusResponse,
+                "/reset",
+                reset_password,
+                methods=["POST"],
+                response_model=CommonResponse,
                 dependencies=limiter_deps.get_request_reset_code_deps()
             )
 
@@ -211,5 +224,5 @@ class AuthRouter(APIRouter):
                 "/register_user",
                 endpoint=register_new_user,
                 methods=["POST"],
-                response_model=StatusResponse,
+                response_model=CommonDataNextStepResponse,
             )

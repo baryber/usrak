@@ -1,8 +1,11 @@
+from typing import List
+
 from fastapi import Depends
 from sqlmodel import select
+from pydantic import BaseModel
 
 from usrak.core.models.user import UserModelBase
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonDataResponse
 from usrak.core.dependencies import user as user_deps
 from usrak.core.dependencies.managers import get_tokens_model, get_tokens_read_schema
 from usrak.core.managers.tokens.auth import AuthTokensManager
@@ -25,9 +28,9 @@ async def get_user_api_tokens(
     result = await session.exec(stmt)
     tokens = result.all()
 
-    tokens_data = [TokensRead.from_orm(token) for token in tokens]
-    return StatusResponse(
-        status=True,
+    tokens_data = [TokensRead.model_validate(token) for token in tokens]
+    return CommonDataResponse(
+        success=True,
         message="Operation completed",
         data={"tokens": tokens_data},
     )
@@ -46,8 +49,8 @@ async def create_api_token(
         name=token_create_data.name,
         whitelisted_ip_addresses=token_create_data.whitelisted_ip_addresses,
     )
-    return StatusResponse(
-        status=True,
+    return CommonDataResponse(
+        success=True,
         message="Operation completed",
         data={"token": token},
     )
@@ -64,11 +67,8 @@ async def delete_api_token(
         user_identifier=user.user_identifier,
         session=session,
     )
-    return StatusResponse(
-        status=True,
+    return CommonDataResponse(
+        success=True,
         message="Operation completed",
         data={},
     )
-
-
-

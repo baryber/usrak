@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from usrak.core import exceptions as exc
 from usrak.core.schemas.user import UserLogin
 from usrak.core.security import verify_password
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonResponse
 
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
@@ -75,7 +75,7 @@ async def login_user(
         **cookie_opts
     )
 
-    return StatusResponse(
+    return CommonResponse(
         success=True,
         message="Success login"
     )

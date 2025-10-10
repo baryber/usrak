@@ -5,7 +5,7 @@ from fastapi import Depends
 
 from usrak.core import enums
 from usrak.core.schemas.user import UserCreate
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonNextStepResponse, CommonDataNextStepResponse
 from usrak.core.schemas.mail import EmailVerificationInput, EmailRequestCodeInput
 
 from usrak.core.db import get_db
@@ -45,7 +45,7 @@ async def signup(
     if user.user_name is not None:
         data["user_name"] = user.user_name
 
-    return StatusResponse(
+    return CommonDataNextStepResponse(
         success=True,
         message="Operation completed",
         data=data,
@@ -64,7 +64,7 @@ async def send_signup_link(
         plain_password=data.plain_password,
     )
 
-    return StatusResponse(
+    return CommonNextStepResponse(
         success=True,
         message="Operation completed",
         next_step=enums.ResponseNextStep.VERIFY.value,
@@ -79,7 +79,7 @@ async def verify_signup_link(
 
     await signup_manager.verify(data.email, data.token)
 
-    return StatusResponse(
+    return CommonNextStepResponse(
         success=True,
         message="Operation completed",
         next_step=enums.ResponseNextStep.LOGIN.value,

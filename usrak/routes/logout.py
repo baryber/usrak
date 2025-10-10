@@ -4,7 +4,7 @@ from fastapi import Response, Request, Depends
 
 from usrak.core import exceptions as exc
 from usrak.core.models.user import UserModelBase
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonResponse
 
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
@@ -44,7 +44,7 @@ async def logout_user(
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
 
-    return StatusResponse(
+    return CommonResponse(
         success=True,
         message="Operation completed",
     )

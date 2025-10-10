@@ -1,15 +1,15 @@
 from fastapi import Depends
 
 from usrak.core.models.user import UserModelBase
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonDataResponse
 from usrak.core.dependencies import user as user_deps
 
 
 async def get_user(
     user: UserModelBase = Depends(user_deps.get_user_verified_and_active)
 ):
-    return StatusResponse(
-        status=True,
+    return CommonDataResponse(
+        success=True,
         message="Operation completed",
         data={
             "mail": user.email,
@@ -23,8 +23,8 @@ async def user_profile(
     user: UserModelBase = Depends(user_deps.get_user_verified_and_active)
 ):
 
-    return StatusResponse(
-        status=True,
+    return CommonDataResponse(
+        success=True,
         message="Operation completed",
         data={
             "mail": user.email,

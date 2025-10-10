@@ -7,7 +7,7 @@ from usrak.core.schemas.mail import Mail, EmailRequestCodeInput, EmailVerificati
 from usrak.core.schemas.password import ForgotPasswordRequestInput, VerifyResetPasswordTokenInput, \
     PasswordResetVerificationInput
 from usrak.core.schemas.redis import RateLimitObj
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonDataResponse
 from usrak.core.schemas.security import SecretContext, JwtTokenPayloadData
 from usrak.core.schemas.user import UserLogin, UserCreate
 
@@ -103,7 +103,7 @@ def test_rate_limit_obj_valid():
 
 # Тесты для usrak.core.schemas.response
 def test_status_response_defaults():
-    resp = StatusResponse()
+    resp = CommonDataResponse()
     assert resp.success is True
     assert resp.message is None
     assert resp.data is None
@@ -111,7 +111,7 @@ def test_status_response_defaults():
 
 
 def test_status_response_custom():
-    resp = StatusResponse(success=False, message="Error", data={"key": "value"}, next_step="verify")
+    resp = CommonDataResponse(success=False, message="Error", data={"key": "value"}, next_step="verify")
     assert resp.success is False
     assert resp.message == "Error"
     assert resp.data == {"key": "value"}

@@ -7,7 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from usrak.core import enums
 from usrak.core.models.user import UserModelBase
 from usrak.core.schemas.user import UserCreate
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonDataNextStepResponse
 
 from usrak.core.db import get_db
 from usrak.core.dependencies.admin import get_admin
@@ -55,7 +55,7 @@ async def register_new_user(
     if user.user_name is not None:
         data["user_name"] = user.user_name
 
-    return StatusResponse(
+    return CommonDataNextStepResponse(
         success=True,
         message="Operation completed",
         data=data,
