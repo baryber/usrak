@@ -1,13 +1,29 @@
-from typing import Optional, Any
+from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
 
-class StatusResponse(BaseModel):
+DataT = TypeVar("DataT")
+
+
+class CommonResponse(BaseModel):
     success: bool = Field(default=True, description="Success status")
     message: Optional[str] = Field(default=None, description="Message")
-    data: Optional[Any] = Field(default=None, description="Data")
+
+
+class CommonNextStepResponse(CommonResponse):
     next_step: Optional[str] = Field(
         default=None,
         description="Next step for the user. Used in async operations.",
     )
+
+
+class CommonDataResponse(CommonNextStepResponse, Generic[DataT]):
+    data: Optional[DataT] = Field(
+        default=None,
+        description="Structured payload returned by the endpoint.",
+    )
+
+
+class CommonDataNextStepResponse(CommonDataResponse[DataT], Generic[DataT]):
+    pass

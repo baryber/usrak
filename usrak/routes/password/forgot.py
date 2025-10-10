@@ -1,7 +1,7 @@
 from fastapi import Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonResponse
 from usrak.core.schemas.password import ForgotPasswordRequestInput
 
 from usrak.core.db import get_db
@@ -15,7 +15,7 @@ async def forgot_password(
     # rm = PasswordResetManager(session=session)
     # await rm.send_link(data.email)
 
-    return StatusResponse(
+    return CommonResponse(
         success=True,
         message="Operation completed",
     )

@@ -1,11 +1,16 @@
+
 from typing import TYPE_CHECKING
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import Depends
+from pydantic import BaseModel, EmailStr
 
 from usrak.core import enums
 from usrak.core.schemas.user import UserCreate
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import (
+    CommonNextStepResponse,
+    CommonDataNextStepResponse,
+)
 from usrak.core.schemas.mail import EmailVerificationInput, EmailRequestCodeInput
 
 from usrak.core.db import get_db
@@ -17,35 +22,44 @@ if TYPE_CHECKING:
     from usrak.core.config_schemas import RouterConfig
 
 
-async def signup(
-        user_in: UserCreate,
-        session: AsyncSession = Depends(get_db),
-        router_config: "RouterConfig" = Depends(get_router_config),
-        mail_signup_manager: MailSignupManager = Depends(MailSignupManager)
-):
+class SignupUserData(BaseModel):
+    email: EmailStr
+    auth_provider: str
+    is_verified: bool
+    is_active: bool
+    user_name: str | None = None
 
+
+SignupResponse = CommonDataNextStepResponse[SignupUserData]
+
+
+async def signup(
+    user_in: UserCreate,
+    session: AsyncSession = Depends(get_db),
+    router_config: "RouterConfig" = Depends(get_router_config),
+    mail_signup_manager: MailSignupManager = Depends(MailSignupManager),
+):
     user = await mail_signup_manager.signup(
         email=user_in.email,
         plain_password=user_in.password,
-        auth_provider="email"
+        auth_provider="email",
     )
 
-    next_step = (enums.ResponseNextStep.VERIFY.value
-                 if router_config.USE_VERIFICATION_LINKS_FOR_SIGNUP
-                 else enums.ResponseNextStep.WAIT_FOR_VERIFICATION.value)
+    next_step = (
+        enums.ResponseNextStep.VERIFY.value
+        if router_config.USE_VERIFICATION_LINKS_FOR_SIGNUP
+        else enums.ResponseNextStep.WAIT_FOR_VERIFICATION.value
+    )
 
-    # TODO: model_dump() from UserReadSchema
-    data = {
-        "email": user.email,
-        "auth_provider": user.auth_provider,
-        "is_verified": user.is_verified,
-        "is_active": user.is_active
-    }
+    data = SignupUserData(
+        email=user.email,
+        auth_provider=user.auth_provider,
+        is_verified=user.is_verified,
+        is_active=user.is_active,
+        user_name=user.user_name,
+    )
 
-    if user.user_name is not None:
-        data["user_name"] = user.user_name
-
-    return StatusResponse(
+    return SignupResponse(
         success=True,
         message="Operation completed",
         data=data,
@@ -54,8 +68,8 @@ async def signup(
 
 
 async def send_signup_link(
-        data: EmailRequestCodeInput,
-        session: AsyncSession = Depends(get_db)
+    data: EmailRequestCodeInput,
+    session: AsyncSession = Depends(get_db),
 ):
     signup_manager = MailSignupManager(session)
 
@@ -64,7 +78,7 @@ async def send_signup_link(
         plain_password=data.plain_password,
     )
 
-    return StatusResponse(
+    return CommonNextStepResponse(
         success=True,
         message="Operation completed",
         next_step=enums.ResponseNextStep.VERIFY.value,
@@ -72,14 +86,14 @@ async def send_signup_link(
 
 
 async def verify_signup_link(
-        data: EmailVerificationInput,
-        session: AsyncSession = Depends(get_db)
+    data: EmailVerificationInput,
+    session: AsyncSession = Depends(get_db),
 ):
     signup_manager = MailSignupManager(session)
 
     await signup_manager.verify(data.email, data.token)
 
-    return StatusResponse(
+    return CommonNextStepResponse(
         success=True,
         message="Operation completed",
         next_step=enums.ResponseNextStep.LOGIN.value,

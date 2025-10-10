@@ -2,7 +2,7 @@ from fastapi import Depends, Response, Request
 
 from usrak.core import exceptions as exc
 from usrak.core.models.user import UserModelBase
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonResponse
 
 from usrak.core.managers.tokens.auth import AuthTokensManager
 
@@ -58,7 +58,7 @@ async def refresh_token(
 
     set_auth_cookies(response, new_access_token, new_refresh_token)
 
-    return StatusResponse(
+    return CommonResponse(
         success=True,
         message="Operation completed",
     )

@@ -1,7 +1,7 @@
 from fastapi import Depends, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from usrak.core.schemas.response import StatusResponse
+from usrak.core.schemas.response import CommonResponse
 from usrak.core.schemas.password import PasswordResetVerificationInput, VerifyResetPasswordTokenInput
 
 from usrak.core.db import get_db
@@ -14,7 +14,7 @@ async def verify_token(
 ):
     # rm = PasswordResetManager(session=session)
     # await rm.verify_token(email=data.email, reset_token=data.token)
-    return StatusResponse(
+    return CommonResponse(
         success=True,
         message="Operation completed",
     )
@@ -34,7 +34,7 @@ async def reset_password(
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
 
-    return StatusResponse(
+    return CommonResponse(
         success=True,
         message="Operation completed",
     )
