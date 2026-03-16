@@ -134,7 +134,6 @@ class AuthRouter(APIRouter):
     def register_sub_routers(self):
         if self.router_config.ENABLE_EMAIL_REGISTRATION:
             sign_up_router = APIRouter(prefix="/signup", tags=["auth"])
-            self.include_router(sign_up_router)
             #  Sign up routes
             sign_up_router.add_api_route(
                 path="",
@@ -159,11 +158,10 @@ class AuthRouter(APIRouter):
                     response_model=CommonNextStepResponse,
                     dependencies=limiter_deps.get_verify_signup_deps(),
                 )
+            self.include_router(sign_up_router)
 
         if self.router_config.ENABLE_OAUTH:
             oauth_router = APIRouter(prefix="/oauth", tags=["auth"])
-            self.include_router(oauth_router)
-
             # OAuth routes
             if self.router_config.ENABLE_GOOGLE_OAUTH:
                 oauth_router.add_api_route(
@@ -189,10 +187,10 @@ class AuthRouter(APIRouter):
                     response_model=CommonResponse,
                     dependencies=limiter_deps.get_oauth_deps(),
                 )
+            self.include_router(oauth_router)
 
         if self.router_config.ENABLE_PASSWORD_RESET_VIA_EMAIL:
             password_router = APIRouter(prefix="/password", tags=["auth"])
-            self.include_router(password_router)
             # Password reset routes
             password_router.add_api_route(
                 "/forgot",
@@ -222,10 +220,10 @@ class AuthRouter(APIRouter):
                 response_model=CommonResponse,
                 dependencies=limiter_deps.get_request_reset_code_deps(),
             )
+            self.include_router(password_router)
 
         if self.router_config.ENABLE_ADMIN_PANEL:
             admin_router = APIRouter(prefix="/admin", tags=["auth"])
-            self.include_router(admin_router)
             # Admin routes
             admin_router.add_api_route(
                 "/register_user",
@@ -233,3 +231,4 @@ class AuthRouter(APIRouter):
                 methods=["POST"],
                 response_model=AdminSignupResponse,
             )
+            self.include_router(admin_router)

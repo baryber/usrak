@@ -4,14 +4,14 @@ import pytest
 
 from sqlmodel import Field
 from pydantic import BaseModel
-from pystructor import omit, pick
 
-from usrak import UserModelBase
+from usrak import RoleModelBase, UserModelBase
 
 
 class TestUserModel(UserModelBase, table=True):
     """Тестовая модель пользователя."""
 
+    __test__ = False
     __tablename__ = "test_users"
 
     super_id: Optional[int] = Field(default=None, primary_key=True, index=True)
@@ -19,19 +19,39 @@ class TestUserModel(UserModelBase, table=True):
     extra_field: str | None = Field(default=None)
 
 
-@omit(TestUserModel, "hashed_password", "password_version", "external_id", "last_password_change")
+class TestRoleModel(RoleModelBase, table=False):
+    """Тестовая модель роли."""
+
+    __test__ = False
+
+
 class TestUserCreateSchema(BaseModel):
     """Тестовая схема для создания пользователей."""
 
+    __test__ = False
+    super_id: int | None = None
+    email: str | None = None
+    auth_provider: str = "email"
+    is_active: bool = False
+    is_verified: bool = False
+    user_name: str | None = None
+    extra_field: str | None = None
     password: str | None = Field()
 
 
-@pick(TestUserModel, "super_id", "email", "is_active", "is_verified", "user_name", "extra_field")
 class TestUserReadSchema(BaseModel):
     """Тестовая схема для чтения пользователей."""
 
-    class Config:
-        from_attributes = True
+    __test__ = False
+    super_id: int | None = None
+    email: str
+    auth_provider: str
+    is_active: bool
+    is_verified: bool
+    user_name: str | None = None
+    extra_field: str | None = None
+
+    model_config = {"from_attributes": True}
 
 
 @pytest.fixture

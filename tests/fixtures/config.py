@@ -2,6 +2,7 @@ import pytest
 
 from usrak import AppConfig, RouterConfig
 
+from .tokens import TestTokensModel, TestTokensReadSchema
 from .user import TestUserModel, TestUserReadSchema
 
 TEST_DATABASE_URL = "postgresql://testusrak:testusrakpassword@localhost:15434/testusrakdb"
@@ -19,6 +20,7 @@ def app_config() -> AppConfig:
         JWT_ACCESS_TOKEN_SECRET_KEY="test_access_secret",
         JWT_REFRESH_TOKEN_SECRET_KEY="test_refresh_secret",
         JWT_ONETIME_TOKEN_SECRET_KEY="test_onetime_secret",
+        JWT_API_TOKEN_SECRET_KEY="test_api_secret",
         CODE_HASH_SALT="test_salt",
         FERNET_KEY="Y8RFpaIxSaAFNsB352tpLXl5znUw5anEKIZgclOezak=",  # Ключ должен быть 32 байта base64
         SMTP_SENDER_EMAIL="test@example.com",
@@ -39,5 +41,7 @@ def router_config(app_config) -> RouterConfig:
     return RouterConfig(
         USER_MODEL=TestUserModel,
         USER_READ_SCHEMA=TestUserReadSchema,
-        USER_IDENTIFIER_FIELD_NAME="super_id"
+        USER_IDENTIFIER_FIELD_NAME="super_id",
+        TOKENS_MODEL=TestTokensModel,
+        TOKENS_READ_SCHEMA=TestTokensReadSchema,
     )
