@@ -15,7 +15,8 @@ def event_loop():
     loop.close()
 
 
-from .fixtures.user import TestUserModel, TestUserReadSchema  # noqa: E402
+from .fixtures.user import TestRoleModel, TestUserModel, TestUserReadSchema  # noqa: E402
+from .fixtures.tokens import TestTokensModel, TestTokensReadSchema  # noqa: E402
 from .fixtures.user import default_email, default_password, test_user, created_test_user, unverified_user, inactive_user  # noqa: E402
 from .fixtures.config import app_config, router_config, TEST_DATABASE_URL, TEST_REDIS_URL  # noqa: E402
 from .fixtures.db import db_session, sync_engine  # noqa: E402

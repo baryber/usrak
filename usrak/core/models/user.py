@@ -5,6 +5,8 @@ from sqlmodel import SQLModel, Field, Column, TIMESTAMP, String
 from sqlalchemy.ext.hybrid import hybrid_property
 from pydantic import EmailStr, field_validator
 
+from usrak.core.enums import DefaultRoles
+
 
 class UserModelBase(SQLModel, table=False):
     """ Базовая модель пользователя для SQLModel."""
@@ -19,7 +21,7 @@ class UserModelBase(SQLModel, table=False):
 
     is_verified: bool = Field(default=False, description="User verification status")
     is_active: bool = Field(default=False, description="User account active status")
-    is_admin: bool = Field(default=False, description="User is an admin")
+    role: str | None = Field(default=None, max_length=64, description="User role identifier")
 
     signed_up_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -40,6 +42,8 @@ class UserModelBase(SQLModel, table=False):
     )
 
     __id_field_name__ = "id"
+    __role_field_name__ = "role"
+    __default_role__ = DefaultRoles.USER.value
 
     class Config:
         validate_assignment = True
@@ -67,9 +71,12 @@ class UserModelBase(SQLModel, table=False):
         return super().__new__(cls)
 
     def __init__(self, **kwargs):
-
         if "user_identifier" in kwargs:
             kwargs[self.__id_field_name__] = kwargs.pop("user_identifier")
+
+        role_field_name = getattr(self, "__role_field_name__", "role")
+        if role_field_name not in kwargs:
+            kwargs[role_field_name] = getattr(self, "__default_role__", DefaultRoles.USER.value)
 
         is_table = getattr(self.model_config, 'table', False)
         self.model_config["table"] = False

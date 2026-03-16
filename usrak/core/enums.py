@@ -7,6 +7,11 @@ class AuthProvider(str, Enum):
     TELEGRAM = 'telegram'
 
 
+class DefaultRoles(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+
+
 class RateLimiterObjectType(str, Enum):
     CODE = "code"
     LINK = "link"

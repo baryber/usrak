@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional, Literal
 
 from pydantic import BaseModel, Field
@@ -8,6 +9,7 @@ from usrak.core.managers.key_value_store import LMDBKeyValueStore
 from usrak.core.managers.notification.no_op import NoOpNotificationService
 from usrak.core.managers.rate_limiter.no_op import NoOpFastApiRateLimiter
 from usrak.core.smtp.no_op import NoOpSMTPClient
+from usrak.core.enums import DefaultRoles
 from usrak import providers_type as pt
 
 
@@ -20,6 +22,10 @@ class RouterConfig(BaseModel):
     )
     USER_IDENTIFIER_FIELD_NAME: str | None = Field(
         default="id", description="Identifier field name in USER_MODEL, used for user identification"
+    )
+    DEFAULT_ROLES_ENUM: type[Enum] = Field(
+        default=DefaultRoles,
+        description="String enum with at least ADMIN and USER role members",
     )
     TOKENS_MODEL: pt.TokensModelType = Field(
         ..., description="Tokens' SQLModel class redefined from 'TokensModelBase'"
@@ -87,8 +93,35 @@ class RouterConfig(BaseModel):
             raise ValueError(
                 f"USER_MODEL must have field '{self.USER_IDENTIFIER_FIELD_NAME}', defined in USER_IDENTIFIER_FIELD_NAME")
 
+        if not hasattr(self.USER_MODEL, "role"):
+            raise ValueError("USER_MODEL must have field 'role'")
+
         setattr(self.USER_MODEL, "__id_field_name__", self.USER_IDENTIFIER_FIELD_NAME)
+        setattr(self.USER_MODEL, "__role_field_name__", "role")
+        setattr(self.USER_MODEL, "__default_role__", self.DEFAULT_ROLES_ENUM.USER.value)
         return self
+
+    @field_validator("DEFAULT_ROLES_ENUM")
+    @classmethod
+    def validate_default_roles_enum(cls, v: type[Enum]) -> type[Enum]:
+        if not isinstance(v, type) or not issubclass(v, Enum):
+            raise TypeError("DEFAULT_ROLES_ENUM must be an Enum class")
+
+        members = v.__members__
+        required_names = ("ADMIN", "USER")
+        missing_members = [name for name in required_names if name not in members]
+        if missing_members:
+            missing_members_str = ", ".join(missing_members)
+            raise ValueError(
+                f"DEFAULT_ROLES_ENUM must define members: {missing_members_str}"
+            )
+
+        for name in required_names:
+            member = members[name]
+            if not isinstance(member.value, str):
+                raise TypeError(f"DEFAULT_ROLES_ENUM.{name} must have a string value")
+
+        return v
 
     @model_validator(mode="after")
     def validate_token_identifier(self):
