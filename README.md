@@ -45,9 +45,10 @@ UsrAK is aimed at backend developers who want to plug a working auth surface int
 | API token IP allowlist | Yes | `whitelisted_ip_addresses` on token model |
 | Optional user resolution | Yes | Access cookie, API token, or both |
 | Role-based protection | Yes | `require_roles(...)` dependency |
+| Role-aware admin user management | Yes | Scoped `create/update/delete` checks by target role |
 | Google OAuth | Yes | Redirect/callback flow |
 | Telegram auth | Yes | Signed Telegram login payload |
-| Admin user registration | Yes | Protected by admin role |
+| Admin user create/update/delete | Yes | Create, patch, and deactivate users behind policy checks |
 | Pluggable KV store | Yes | In-memory, Redis, LMDB, or custom class |
 | Pluggable notification service | Yes | No-op or SMTP-backed |
 | Redis rate limiter backend | Not yet | Config surface exists, implementation is incomplete |
@@ -76,7 +77,7 @@ from typing import Optional
 from pydantic import BaseModel
 from sqlmodel import Field
 
-from usrak import TokensModelBase, UserModelBase
+from usrak import RoleModelBase, TokensModelBase, UserModelBase
 
 
 class User(UserModelBase, table=True):
@@ -90,6 +91,12 @@ class ApiToken(TokensModelBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
+
+
+class Role(RoleModelBase, table=True):
+    __tablename__ = "roles"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
 
 
 class UserRead(BaseModel):
@@ -136,11 +143,19 @@ app_config = AppConfig(
 router_config = RouterConfig(
     USER_MODEL=User,
     USER_READ_SCHEMA=UserRead,
+    ROLE_MODEL=Role,
     TOKENS_MODEL=ApiToken,
     TOKENS_READ_SCHEMA=ApiTokenRead,
     ENABLE_EMAIL_REGISTRATION=True,
     ENABLE_PASSWORD_RESET_VIA_EMAIL=True,
     USE_VERIFICATION_LINKS_FOR_SIGNUP=True,
+    DEFAULT_USER_MANAGEMENT_RULES={
+        "admin": {
+            "create": {"user"},
+            "update": {"user"},
+            "delete": {"user"},
+        }
+    },
 )
 ```
 
@@ -221,7 +236,9 @@ Routes are enabled conditionally from `RouterConfig`.
 | `/oauth/google` | `POST` | Start Google OAuth | `ENABLE_OAUTH` + `ENABLE_GOOGLE_OAUTH` |
 | `/oauth/google/callback` | `GET` | Finish Google OAuth | `ENABLE_OAUTH` + `ENABLE_GOOGLE_OAUTH` |
 | `/oauth/telegram` | `POST` | Telegram auth | `ENABLE_OAUTH` + `ENABLE_TELEGRAM_OAUTH` |
-| `/admin/register_user` | `POST` | Admin-only user creation | `ENABLE_ADMIN_PANEL` |
+| `/admin/register_user` | `POST` | Create a user with explicit target role | `ENABLE_ADMIN_PANEL` |
+| `/admin/users/{user_identifier}` | `PATCH` | Update user fields and optionally change role | `ENABLE_ADMIN_PANEL` |
+| `/admin/users/{user_identifier}` | `DELETE` | Deactivate a user | `ENABLE_ADMIN_PANEL` |
 
 ## How To Extend
 
@@ -244,7 +261,7 @@ router_config = RouterConfig(
 
 This is one of the package's strongest extension points: it does not force a hardcoded internal user ID convention.
 
-### Override roles
+### Override roles and user-management rules
 
 `RouterConfig.DEFAULT_ROLES_ENUM` lets you replace the default `admin/user` pair with your own string enum, as long as the enum still contains `ADMIN` and `USER`.
 
@@ -257,6 +274,53 @@ class Roles(str, Enum):
     USER = "member"
     AUDITOR = "auditor"
 ```
+
+For admin user-management, `RouterConfig.DEFAULT_USER_MANAGEMENT_RULES` defines the default `create/update/delete`
+matrix for roles from `DEFAULT_ROLES_ENUM`.
+
+```python
+router_config = RouterConfig(
+    USER_MODEL=User,
+    USER_READ_SCHEMA=UserRead,
+    ROLE_MODEL=Role,
+    TOKENS_MODEL=ApiToken,
+    TOKENS_READ_SCHEMA=ApiTokenRead,
+    DEFAULT_ROLES_ENUM=Roles,
+    DEFAULT_USER_MANAGEMENT_RULES={
+        "superuser": {
+            "create": "*",
+            "update": "*",
+            "delete": "*",
+        },
+        "member": {
+            "create": set(),
+            "update": set(),
+            "delete": set(),
+        },
+    },
+)
+```
+
+If `ROLE_MODEL` is configured, per-role database overrides can refine the same policy at runtime through
+`RoleModelBase.user_management_rules`.
+
+```python
+role = Role(
+    name="manager",
+    description="Can manage regular users",
+    user_management_rules={
+        "create": ["user"],
+        "update": ["user"],
+        "delete": ["user"],
+    },
+)
+```
+
+UsrAK resolves user-management permissions in this order:
+
+- database override on the acting role, if present
+- fallback to `DEFAULT_USER_MANAGEMENT_RULES`
+- deny if no rule exists
 
 ### Swap infrastructure backends
 
@@ -284,6 +348,13 @@ Good patterns:
 - use `get_user_api_only` for machine-to-machine calls
 - use `get_optional_user_any` when auth should enrich, but not block, a request
 - use `require_roles(...)` for admin or staff-only endpoints
+
+Use admin user-management routes when you need target-role-aware checks.
+Those routes enforce scoped policy for:
+
+- `create`
+- `update`
+- `delete`
 
 ### Customize responses and schemas
 
@@ -321,11 +392,15 @@ tests/
 - `FAST_API_RATE_LIMITER="redis"` currently raises `NotImplementedError`.
 - The package is PostgreSQL-first today:
   `AppConfig.DATABASE_URL` is typed as `PostgresDsn`, and `TokensModelBase` uses PostgreSQL `JSONB`.
+- Admin `DELETE /auth/admin/users/{user_identifier}` currently performs controlled deactivation by setting
+  `is_active=False`; it is not a hard delete.
 - DB migrations are not managed by UsrAK. You own table creation, migrations, and lifecycle.
 - Global config is stored in module-level state and several providers are cached with `lru_cache()`. Running multiple differently configured auth apps in the same process is risky.
 - Parent config flags do not strictly enforce child flags.
   Example: passing `ENABLE_OAUTH=False` and `ENABLE_GOOGLE_OAUTH=True` still leaves Google OAuth enabled at the field level.
 - OAuth support is currently focused on Google and Telegram only.
+- Permission tables and `require_permissions(...)` are not implemented yet; authorization is currently centered on
+  role checks and scoped user-management rules.
 - Some implementation areas still contain debug prints and TODOs, so production hardening is not finished.
 
 ## Development
@@ -356,6 +431,8 @@ This section is derived from git tags and the current `HEAD`.
 Current `HEAD` version in `pyproject.toml` and not tagged yet in git.
 
 - Added `RoleModelBase` to make role-based extension more explicit.
+- Added role-aware admin user management with create, update, and deactivate flows.
+- Added `ROLE_MODEL` and `DEFAULT_USER_MANAGEMENT_RULES` to support default and DB-driven policy resolution.
 - Updated packaging metadata and project versioning.
 
 ### v0.2.3 - 2025-10-10
