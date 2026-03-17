@@ -13,7 +13,7 @@ from usrak.core.managers.rate_limiter.no_op import NoOpFastApiRateLimiter
 from usrak.core.smtp.no_op import NoOpSMTPClient
 
 from .fixtures.tokens import TestTokensModel, TestTokensReadSchema
-from .fixtures.user import TestUserModel, TestUserReadSchema
+from .fixtures.user import TestRoleModel, TestUserModel, TestUserReadSchema
 
 
 class CustomRoles(str, Enum):
@@ -260,3 +260,41 @@ def test_router_config_default_roles_enum_override():
 def test_router_config_default_roles_enum_requires_admin_and_user():
     with pytest.raises(ValidationError, match="DEFAULT_ROLES_ENUM must define members: USER"):
         make_router_config(DEFAULT_ROLES_ENUM=MissingUserRoles)
+
+
+def test_router_config_default_user_management_rules_default():
+    cfg = make_router_config()
+
+    admin_rules = cfg.DEFAULT_USER_MANAGEMENT_RULES[DefaultRoles.ADMIN.value]
+    assert admin_rules.create == {DefaultRoles.USER.value}
+    assert admin_rules.update == {DefaultRoles.USER.value}
+    assert admin_rules.delete == {DefaultRoles.USER.value}
+
+
+def test_router_config_default_user_management_rules_validation():
+    with pytest.raises(ValidationError, match="unknown source role: manager"):
+        make_router_config(
+            DEFAULT_USER_MANAGEMENT_RULES={
+                "manager": {
+                    "create": {"user"},
+                    "update": {"user"},
+                    "delete": {"user"},
+                }
+            }
+        )
+
+    with pytest.raises(ValidationError, match="unknown target roles: manager"):
+        make_router_config(
+            DEFAULT_USER_MANAGEMENT_RULES={
+                "admin": {
+                    "create": {"manager"},
+                    "update": {"user"},
+                    "delete": {"user"},
+                }
+            }
+        )
+
+
+def test_router_config_role_model_override():
+    cfg = make_router_config(ROLE_MODEL=TestRoleModel)
+    assert cfg.ROLE_MODEL is TestRoleModel

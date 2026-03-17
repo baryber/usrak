@@ -20,7 +20,13 @@ from .routes.signup import (
     verify_signup_link,
     SignupResponse,
 )
-from .routes.admin import register_new_user, AdminSignupResponse
+from .routes.admin import (
+    register_new_user,
+    update_user,
+    delete_user,
+    AdminSignupResponse,
+    AdminUserResponse,
+)
 from .routes.google import google_oauth_callback, google_oauth
 from .routes.telegram import telegram_auth
 
@@ -230,5 +236,17 @@ class AuthRouter(APIRouter):
                 endpoint=register_new_user,
                 methods=["POST"],
                 response_model=AdminSignupResponse,
+            )
+            admin_router.add_api_route(
+                "/users/{user_identifier}",
+                endpoint=update_user,
+                methods=["PATCH"],
+                response_model=AdminUserResponse,
+            )
+            admin_router.add_api_route(
+                "/users/{user_identifier}",
+                endpoint=delete_user,
+                methods=["DELETE"],
+                response_model=CommonResponse,
             )
             self.include_router(admin_router)

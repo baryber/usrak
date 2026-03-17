@@ -10,6 +10,7 @@ from usrak.core.security import decode_jwt_token
 from usrak.core.models.role import RoleModelBase
 from usrak.core.models.user import UserModelBase
 from usrak.core.managers.tokens.auth import AuthTokensManager
+from usrak.core.roles import normalize_role_reference
 
 from usrak.core.dependencies.managers import get_user_model
 from usrak.core.dependencies.config_provider import get_app_config, get_router_config
@@ -18,26 +19,6 @@ from usrak.core.db import get_db
 
 if TYPE_CHECKING:
     from usrak.core.config_schemas import AppConfig, RouterConfig
-
-
-def _normalize_required_role(
-    role: RoleModelBase | str | Literal["*"],
-    router_config: "RouterConfig",
-) -> str:
-    if role == "*":
-        return role
-
-    if isinstance(role, RoleModelBase):
-        return role.name
-
-    if isinstance(role, Enum):
-        configured_roles = router_config.DEFAULT_ROLES_ENUM
-        if role.name in configured_roles.__members__:
-            return str(configured_roles[role.name].value)
-        return str(role.value)
-
-    return str(role)
-
 
 def require_roles(roles: RoleModelBase | str | Literal["*"]):
     async def dep(
@@ -67,7 +48,7 @@ def require_roles(roles: RoleModelBase | str | Literal["*"]):
         if not user:
             raise exc.InvalidCredentialsException
 
-        required_role = _normalize_required_role(roles, router_config)
+        required_role = normalize_role_reference(roles, router_config)
         if required_role != "*":
             role_field_name = getattr(user, "__role_field_name__", "role")
             user_role = getattr(user, role_field_name, None)

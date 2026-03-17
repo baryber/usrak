@@ -43,6 +43,8 @@ async def signup(
         email=user_in.email,
         plain_password=user_in.password,
         auth_provider="email",
+        user_name=user_in.user_name,
+        external_id=user_in.external_id,
     )
 
     next_step = (

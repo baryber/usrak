@@ -19,10 +19,13 @@ class TestUserModel(UserModelBase, table=True):
     extra_field: str | None = Field(default=None)
 
 
-class TestRoleModel(RoleModelBase, table=False):
+class TestRoleModel(RoleModelBase, table=True):
     """Тестовая модель роли."""
 
     __test__ = False
+    __tablename__ = "test_roles"
+
+    id: Optional[int] = Field(default=None, primary_key=True, index=True)
 
 
 class TestUserCreateSchema(BaseModel):

@@ -45,6 +45,44 @@ class UserCreate(
         return self
 
 
+class AdminUserCreate(
+    BaseModel,
+    EmailNormalizerMixin,
+    PasswordValidatorMixin,
+):
+    auth_provider: Literal["email"] = "email"
+    email: EmailStr = Field(max_length=255)
+    password: str = Field(min_length=8, max_length=255)
+    external_id: Optional[str] = Field(default=None, max_length=64)
+    user_name: Optional[str] = Field(default=None, max_length=255)
+    role: Optional[str] = Field(default=None, max_length=64)
+
+
+class AdminUserUpdate(
+    BaseModel,
+    EmailNormalizerMixin,
+    PasswordValidatorMixin,
+):
+    email: Optional[EmailStr] = Field(default=None, max_length=255)
+    password: Optional[str] = Field(default=None, min_length=8, max_length=255)
+    external_id: Optional[str] = Field(default=None, max_length=64)
+    user_name: Optional[str] = Field(default=None, max_length=255)
+    role: Optional[str] = Field(default=None, max_length=64)
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_non_empty_payload(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one field must be provided")
+
+        for field_name in ("email", "password", "role", "is_active", "is_verified"):
+            if field_name in self.model_fields_set and getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} must not be null")
+
+        return self
+
+
 if __name__ == '__main__':
     test = UserLogin(
         auth_provider="email",
