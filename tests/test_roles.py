@@ -7,7 +7,9 @@ from httpx import ASGITransport, AsyncClient
 from starlette.requests import Request
 
 from usrak import AuthApp, DefaultRoles, RouterConfig
+from usrak.core import enums
 from usrak.core.dependencies.role import require_roles
+from usrak.core.dependencies.user import build_user_dependency
 from usrak.core.db import get_db
 from usrak.core.dependencies.config_provider import set_app_config, set_router_config
 from usrak.core.managers.tokens.auth import AuthTokensManager
@@ -193,11 +195,11 @@ async def test_require_roles_accepts_wildcard(app_config, db_session, default_pa
 
     dependency = require_roles("*")
     user = await dependency(
-        request=request,
+        connection=request,
         session=_AsyncSessionAdapter(db_session),
         app_config=app_config,
         router_config=router_config,
-        auth_tokens_manager=_FakeAuthTokensManager(),
+        tokens_manager=_FakeAuthTokensManager(),
     )
 
     assert user.email == "wildcard-role@example.com"
@@ -235,14 +237,155 @@ async def test_require_roles_accepts_role_model_instance(app_config, db_session,
 
     dependency = require_roles(moderator_role)
     user = await dependency(
-        request=request,
+        connection=request,
         session=_AsyncSessionAdapter(db_session),
         app_config=app_config,
         router_config=router_config,
-        auth_tokens_manager=_FakeAuthTokensManager(),
+        tokens_manager=_FakeAuthTokensManager(),
     )
 
     assert user.email == "moderator-role@example.com"
+
+
+@pytest.mark.asyncio
+async def test_require_roles_accepts_multiple_roles(app_config, db_session, default_password: str):
+    router_config = _make_router_config()
+    user = TestUserModel(
+        email="multi-role@example.com",
+        hashed_password=hash_password(default_password),
+        auth_provider="email",
+        is_active=True,
+        is_verified=True,
+        role="moderator",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    set_app_config(app_config)
+    set_router_config(router_config)
+
+    access_token = _build_access_token(app_config, user)
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/protected",
+            "headers": [(b"cookie", f"access_token={access_token}".encode())],
+        }
+    )
+
+    dependency = require_roles("admin", "moderator")
+    user = await dependency(
+        connection=request,
+        session=_AsyncSessionAdapter(db_session),
+        app_config=app_config,
+        router_config=router_config,
+        tokens_manager=_FakeAuthTokensManager(),
+    )
+
+    assert user.email == "multi-role@example.com"
+
+
+@pytest.mark.asyncio
+async def test_build_user_dependency_optional_returns_none_for_inactive_user(
+    app_config,
+    db_session,
+    default_password: str,
+):
+    router_config = _make_router_config()
+    user = TestUserModel(
+        email="inactive-optional@example.com",
+        hashed_password=hash_password(default_password),
+        auth_provider="email",
+        is_active=False,
+        is_verified=True,
+        role=DefaultRoles.USER.value,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    set_app_config(app_config)
+    set_router_config(router_config)
+
+    access_token = _build_access_token(app_config, user)
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/protected",
+            "headers": [(b"cookie", f"access_token={access_token}".encode())],
+        }
+    )
+
+    dependency = build_user_dependency(optional=True, require_verified=True, require_active=True)
+    resolved_user = await dependency(
+        connection=request,
+        session=_AsyncSessionAdapter(db_session),
+        app_config=app_config,
+        router_config=router_config,
+        tokens_manager=_FakeAuthTokensManager(),
+    )
+
+    assert resolved_user is None
+
+
+@pytest.mark.asyncio
+async def test_build_user_dependency_keeps_access_cache_isolated_from_api_only(
+    app_config,
+    db_session,
+    default_password: str,
+):
+    router_config = _make_router_config()
+    user = TestUserModel(
+        email="cache-isolated@example.com",
+        hashed_password=hash_password(default_password),
+        auth_provider="email",
+        is_active=True,
+        is_verified=True,
+        role=DefaultRoles.USER.value,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    set_app_config(app_config)
+    set_router_config(router_config)
+
+    access_token = _build_access_token(app_config, user)
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/protected",
+            "headers": [(b"cookie", f"access_token={access_token}".encode())],
+        }
+    )
+
+    access_dependency = build_user_dependency(auth_mode=enums.AuthMode.ACCESS_ONLY)
+    api_dependency = build_user_dependency(
+        auth_mode=enums.AuthMode.API_ONLY,
+        optional=True,
+    )
+
+    access_user = await access_dependency(
+        connection=request,
+        session=_AsyncSessionAdapter(db_session),
+        app_config=app_config,
+        router_config=router_config,
+        tokens_manager=_FakeAuthTokensManager(),
+    )
+    api_user = await api_dependency(
+        connection=request,
+        session=_AsyncSessionAdapter(db_session),
+        app_config=app_config,
+        router_config=router_config,
+        tokens_manager=_FakeAuthTokensManager(),
+    )
+
+    assert access_user.email == "cache-isolated@example.com"
+    assert api_user is None
 
 
 @pytest.mark.asyncio
