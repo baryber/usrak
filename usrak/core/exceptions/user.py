@@ -58,6 +58,23 @@ class AccessDeniedException(HTTPException):
         )
 
 
+class UserNotFoundException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=404,
+            detail="User not found",
+        )
+
+
+class InvalidRoleException(HTTPException):
+    def __init__(self, role: str | None = None):
+        detail = "Invalid role" if role is None else f"Invalid role: {role}"
+        super().__init__(
+            status_code=422,
+            detail=detail,
+        )
+
+
 class TooManyAPIKeysException(HTTPException):
     def __init__(self, max_keys: int):
         super().__init__(

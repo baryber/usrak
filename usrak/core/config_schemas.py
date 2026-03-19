@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from typing import List, Optional, Literal
 
@@ -10,7 +11,18 @@ from usrak.core.managers.notification.no_op import NoOpNotificationService
 from usrak.core.managers.rate_limiter.no_op import NoOpFastApiRateLimiter
 from usrak.core.smtp.no_op import NoOpSMTPClient
 from usrak.core.enums import DefaultRoles
+from usrak.core.enums import UserManagementAction
+from usrak.core.models.role import RoleModelBase
 from usrak import providers_type as pt
+
+
+class UserManagementRuleSet(BaseModel):
+    create: set[str] | Literal["*"] = Field(default_factory=set)
+    update: set[str] | Literal["*"] = Field(default_factory=set)
+    delete: set[str] | Literal["*"] = Field(default_factory=set)
+
+    def get_targets(self, action: UserManagementAction) -> set[str] | Literal["*"]:
+        return getattr(self, action.value)
 
 
 class RouterConfig(BaseModel):
@@ -20,12 +32,20 @@ class RouterConfig(BaseModel):
     USER_READ_SCHEMA: pt.UserReadSchemaType = Field(
         ..., description="User's read schema class redefined from user's SQLModel class ('USER_MODEL')"
     )
+    ROLE_MODEL: pt.RoleModelType | None = Field(
+        default=None,
+        description="Optional SQLModel role class redefined from 'RoleModelBase'",
+    )
     USER_IDENTIFIER_FIELD_NAME: str | None = Field(
         default="id", description="Identifier field name in USER_MODEL, used for user identification"
     )
     DEFAULT_ROLES_ENUM: type[Enum] = Field(
         default=DefaultRoles,
         description="String enum with at least ADMIN and USER role members",
+    )
+    DEFAULT_USER_MANAGEMENT_RULES: dict[str, UserManagementRuleSet] | None = Field(
+        default=None,
+        description="Default create/update/delete rules for roles from DEFAULT_ROLES_ENUM",
     )
     TOKENS_MODEL: pt.TokensModelType = Field(
         ..., description="Tokens' SQLModel class redefined from 'TokensModelBase'"
@@ -123,6 +143,52 @@ class RouterConfig(BaseModel):
 
         return v
 
+    @field_validator("ROLE_MODEL")
+    @classmethod
+    def validate_role_model(cls, v: pt.RoleModelType | None) -> pt.RoleModelType | None:
+        if v is None:
+            return v
+
+        if not isinstance(v, type) or not issubclass(v, RoleModelBase):
+            raise TypeError("ROLE_MODEL must inherit from RoleModelBase")
+
+        return v
+
+    @model_validator(mode="after")
+    def validate_default_user_management_rules(self):
+        if self.DEFAULT_USER_MANAGEMENT_RULES is None:
+            admin_role = str(self.DEFAULT_ROLES_ENUM.ADMIN.value)
+            user_role = str(self.DEFAULT_ROLES_ENUM.USER.value)
+            self.DEFAULT_USER_MANAGEMENT_RULES = {
+                admin_role: UserManagementRuleSet(
+                    create={user_role},
+                    update={user_role},
+                    delete={user_role},
+                )
+            }
+
+        configured_roles = {str(member.value) for member in self.DEFAULT_ROLES_ENUM}
+        for source_role, action_rules in self.DEFAULT_USER_MANAGEMENT_RULES.items():
+            if source_role not in configured_roles:
+                raise ValueError(
+                    f"DEFAULT_USER_MANAGEMENT_RULES contains unknown source role: {source_role}"
+                )
+
+            for action in UserManagementAction:
+                targets = action_rules.get_targets(action)
+                if targets == "*":
+                    continue
+
+                unknown_targets = sorted(set(targets) - configured_roles)
+                if unknown_targets:
+                    unknown_targets_str = ", ".join(unknown_targets)
+                    raise ValueError(
+                        f"DEFAULT_USER_MANAGEMENT_RULES[{source_role}].{action.value} contains "
+                        f"unknown target roles: {unknown_targets_str}"
+                    )
+
+        return self
+
     @model_validator(mode="after")
     def validate_token_identifier(self):
         if not hasattr(self.TOKENS_MODEL, self.TOKENS_IDENTIFIER_FIELD_NAME):
@@ -216,7 +282,7 @@ class RouterConfig(BaseModel):
         return v
 
     def __hash__(self):
-        return hash(tuple(sorted(self.dict().items())))
+        return hash(json.dumps(self.model_dump(mode="json"), sort_keys=True, default=str))
 
 
 class AppConfig(BaseModel):

@@ -50,6 +50,9 @@ class MailSignupManager:
             auth_provider: str,
             is_active: bool = False,
             is_verified: bool = False,
+            role: str | None = None,
+            user_name: str | None = None,
+            external_id: str | None = None,
     ) -> UserModelBase:
         if auth_provider != "email":
             raise exc.UnsupportedAuthProvider
@@ -73,6 +76,9 @@ class MailSignupManager:
             hashed_password=hash_password(plain_password),
             is_active=is_active,
             is_verified=is_verified,
+            role=role,
+            user_name=user_name,
+            external_id=external_id,
             signed_up_at=datetime.now(timezone.utc),
             password_version=1,
         )

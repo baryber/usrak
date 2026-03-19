@@ -1,0 +1,11 @@
+[mcp_servers.pycharm]
+command = "npx"
+args = [
+	"mcp-remote",
+	"http://localhost:64342/sse",
+	"--header",
+	"IJ_MCP_SERVER_PROJECT_PATH: ${PROJECT_PATH}"
+]
+startup_timeout_sec = 20
+tool_timeout_sec = 45
+enabled = true

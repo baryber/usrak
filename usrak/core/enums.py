@@ -12,6 +12,12 @@ class DefaultRoles(str, Enum):
     USER = "user"
 
 
+class UserManagementAction(str, Enum):
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+
 class RateLimiterObjectType(str, Enum):
     CODE = "code"
     LINK = "link"
