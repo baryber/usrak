@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "UsrAK"
-version = "0.4.0"
+version = "0.5.0"
 authors = [
     {name = "frankmurrey"},
     {name = "preposition17"},
@@ -36,7 +36,6 @@ dependencies = [
     "lmdb>=1.6.2",
     "psycopg2>=2.9.7",
     "bcrypt==4.0.1",
-    "cachetools==6.1.0",
     "psycopg[binary,async]==3.2.3"
 
 ]

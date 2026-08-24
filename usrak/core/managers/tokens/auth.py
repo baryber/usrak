@@ -1,18 +1,17 @@
 import time
 from typing import Optional
-from sqlmodel import select, func
+
+from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from usrak.core.logger import logger
-
-from usrak.core import exceptions as exc, enums
-from usrak.core.security import generate_jti
-from usrak.core.schemas.security import SecretContext
-from usrak.core.managers.tokens.base import TokensManagerBase
-from usrak.core.dependencies.config_provider import get_app_config
+from usrak.core import enums
+from usrak.core import exceptions as exc
 from usrak.core.dependencies.managers import get_tokens_model
-
-from usrak.core.security import hash_token, create_secret_token
+from usrak.core.logger import logger
+from usrak.core.managers.tokens.base import TokensManagerBase
+from usrak.core.resolvers.api_token import resolve_api_token_record
+from usrak.core.schemas.security import SecretContext
+from usrak.core.security import create_secret_token, generate_jti, hash_token
 
 
 class AuthTokensManager(TokensManagerBase):
@@ -92,13 +91,14 @@ class AuthTokensManager(TokensManagerBase):
             expires_at: Optional[int] = None,
             whitelisted_ip_addresses: Optional[list[str]] = None,
     ) -> str:
-        app_config = get_app_config()
+        app_config = self.app_config
+        router_config = self.router_config
         Tokens = get_tokens_model()
 
         stmt = select(func.count()).select_from(Tokens).where(
             Tokens.owner_identifier == user_identifier,
-            Tokens.token_type == enums.TokenTypes.API_TOKEN.value,
-            Tokens.is_deleted == False,
+            Tokens.token_type == router_config.usrak_api_token_type,
+            Tokens.is_deleted.is_(False),
         )
 
         count: int = await session.scalar(stmt)
@@ -113,7 +113,7 @@ class AuthTokensManager(TokensManagerBase):
             **{Tokens.__owner_field_name__: user_identifier},
             name=name,
             token=hashed_token,
-            token_type=enums.TokenTypes.API_TOKEN.value,
+            token_type=router_config.usrak_api_token_type,
             expires_at=expires_at,
             whitelisted_ip_addresses=whitelisted_ip_addresses,
             is_deleted=False,
@@ -130,14 +130,15 @@ class AuthTokensManager(TokensManagerBase):
             session: AsyncSession,
     ) -> None:
         tokens_model = get_tokens_model()
+        router_config = self.router_config
 
         owner_col = getattr(tokens_model, tokens_model.__owner_field_name__)
 
         stmt = select(tokens_model).where(
             owner_col == user_identifier,
             tokens_model.token_identifier == token_identifier,
-            tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
-            tokens_model.is_deleted == False,
+            tokens_model.token_type == router_config.usrak_api_token_type,
+            tokens_model.is_deleted.is_(False),
         )
         result = await session.exec(stmt)
         token_obj = result.first()
@@ -155,34 +156,14 @@ class AuthTokensManager(TokensManagerBase):
             session: AsyncSession,
             whitelisted_ip_addresses: Optional[list[str]] = None
     ) -> None:
-        await self.validate_token(
-            token=token,
-            jwt_secret=self.app_config.JWT_API_TOKEN_SECRET_KEY,
+        token_obj = await resolve_api_token_record(
+            api_token=token,
+            session=session,
+            router_config=self.router_config,
             user_identifier=user_identifier,
-            secret_context=SecretContext(ip_addresses=whitelisted_ip_addresses) if whitelisted_ip_addresses else None
+            remote_addresses=whitelisted_ip_addresses,
         )
-        tokens_model = get_tokens_model()
-
-        hashed_token = hash_token(token)
-
-        owner_col = getattr(tokens_model, tokens_model.__owner_field_name__)
-
-        stmt = select(tokens_model).where(
-            owner_col == user_identifier,
-            tokens_model.token == hashed_token,
-            tokens_model.token_type == enums.TokenTypes.API_TOKEN.value,
-            tokens_model.is_deleted == False,
-        )
-
-        result = await session.exec(stmt)
-        maybe_obj = result.one_or_none()
-
-        if maybe_obj is None:
-            raise exc.InvalidTokenException
-
-        token_obj = maybe_obj if isinstance(maybe_obj, tokens_model) else maybe_obj[0]
-
-        if not token_obj:
+        if token_obj is None:
             raise exc.InvalidTokenException
 
     async def validate_access_token(
