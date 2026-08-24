@@ -3,19 +3,19 @@ from dataclasses import dataclass
 from typing import Type
 
 from fastapi import Depends
-from sqlmodel import select
 from pydantic import BaseModel, create_model
+from sqlmodel import select
 
-from usrak.core.models.user import UserModelBase
-from usrak.core.schemas.response import CommonDataResponse
+from usrak.core.db import get_db
 from usrak.core.dependencies import user as user_deps
+from usrak.core.dependencies.config_provider import get_router_config
 from usrak.core.dependencies.managers import (
     get_tokens_model,
     get_tokens_read_schema,
 )
 from usrak.core.managers.tokens.auth import AuthTokensManager
-
-from usrak.core.db import get_db
+from usrak.core.models.user import UserModelBase
+from usrak.core.schemas.response import CommonDataResponse
 from usrak.core.schemas.tokens import ApiTokenCreate
 
 
@@ -65,6 +65,7 @@ def get_token_response_models() -> TokenResponseModels:
 async def get_user_api_tokens(
     user: UserModelBase = Depends(user_deps.get_user_access_only),
     session=Depends(get_db),
+    router_config=Depends(get_router_config),
 ):
     models = get_token_response_models()
 
@@ -73,7 +74,8 @@ async def get_user_api_tokens(
 
     stmt = select(Tokens).where(
         Tokens.owner_identifier == user.user_identifier,
-        Tokens.is_deleted == False,
+        Tokens.is_deleted.is_(False),
+        Tokens.token_type == router_config.usrak_api_token_type,
     )
     result = await session.exec(stmt)
     tokens = result.all()
@@ -114,10 +116,10 @@ async def delete_api_token(
     token_identifier: str,
     user: UserModelBase = Depends(user_deps.get_user_access_only),
     session=Depends(get_db),
+    auth_tokens_manager: AuthTokensManager = Depends(AuthTokensManager),
 ):
     models = get_token_response_models()
 
-    auth_tokens_manager: AuthTokensManager = AuthTokensManager()
     await auth_tokens_manager.delete_api_token(
         token_identifier=token_identifier,
         user_identifier=user.user_identifier,

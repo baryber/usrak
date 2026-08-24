@@ -1,19 +1,60 @@
 import json
 from enum import Enum
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field
-from pydantic import PostgresDsn, RedisDsn, EmailStr
-from pydantic import model_validator, field_validator
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python 3.10 compatibility
+    class StrEnum(str, Enum):
+        pass
 
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    PostgresDsn,
+    RedisDsn,
+    field_validator,
+    model_validator,
+)
+
+from usrak import providers_type as pt
+from usrak.core.enums import DefaultRoles, UserManagementAction
 from usrak.core.managers.key_value_store import LMDBKeyValueStore
 from usrak.core.managers.notification.no_op import NoOpNotificationService
 from usrak.core.managers.rate_limiter.no_op import NoOpFastApiRateLimiter
-from usrak.core.smtp.no_op import NoOpSMTPClient
-from usrak.core.enums import DefaultRoles
-from usrak.core.enums import UserManagementAction
 from usrak.core.models.role import RoleModelBase
-from usrak import providers_type as pt
+from usrak.core.smtp.no_op import NoOpSMTPClient
+
+
+class TokenTypeManagement(StrEnum):
+    """Defines which bounded context owns a persistent token type."""
+
+    USRAK_API = "usrak_api"
+    APPLICATION = "application"
+
+
+class PersistentTokenTypeConfig(BaseModel):
+    """Declarative ownership policy for a value stored in ``token_type``."""
+
+    token_type: str = Field(min_length=1, max_length=64)
+    management: TokenTypeManagement
+
+    @field_validator("token_type")
+    @classmethod
+    def validate_token_type(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError("token_type must not contain surrounding whitespace")
+        return value
+
+
+def _default_persistent_token_types() -> tuple[PersistentTokenTypeConfig, ...]:
+    return (
+        PersistentTokenTypeConfig(
+            token_type="api_token",
+            management=TokenTypeManagement.USRAK_API,
+        ),
+    )
 
 
 class UserManagementRuleSet(BaseModel):
@@ -61,6 +102,10 @@ class RouterConfig(BaseModel):
     )
     TOKENS_OWNER_RELATION_FIELD_NAME: str | None = Field(
         default="user", description="Owner relation field name in TOKENS_MODEL"
+    )
+    PERSISTENT_TOKEN_TYPES: tuple[PersistentTokenTypeConfig, ...] = Field(
+        default_factory=_default_persistent_token_types,
+        description="Persistent token types and the bounded context that manages each type",
     )
     KEY_VALUE_STORE: pt.KeyValueStoreType | Literal["in_memory", "redis", "lmdb"] = Field(
         default=LMDBKeyValueStore, description="KeyValueStore class"
@@ -207,6 +252,31 @@ class RouterConfig(BaseModel):
 
         setattr(self.TOKENS_MODEL, "__owner_field_name__", self.TOKENS_OWNER_FIELD_NAME)
         return self
+
+    @model_validator(mode="after")
+    def validate_persistent_token_types(self):
+        token_types = [policy.token_type for policy in self.PERSISTENT_TOKEN_TYPES]
+        if len(token_types) != len(set(token_types)):
+            raise ValueError("PERSISTENT_TOKEN_TYPES must contain unique token_type values")
+
+        usr_api_policies = [
+            policy
+            for policy in self.PERSISTENT_TOKEN_TYPES
+            if policy.management == TokenTypeManagement.USRAK_API
+        ]
+        if len(usr_api_policies) != 1:
+            raise ValueError(
+                "PERSISTENT_TOKEN_TYPES must contain exactly one usrAK-managed API token type"
+            )
+        return self
+
+    @property
+    def usrak_api_token_type(self) -> str:
+        return next(
+            policy.token_type
+            for policy in self.PERSISTENT_TOKEN_TYPES
+            if policy.management == TokenTypeManagement.USRAK_API
+        )
 
     @field_validator("KEY_VALUE_STORE", mode="before")
     @classmethod

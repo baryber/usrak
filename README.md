@@ -5,7 +5,7 @@
 [![SQLModel](https://img.shields.io/badge/SQLModel-supported-7E57C2)](https://sqlmodel.tiangolo.com/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./pyproject.toml)
 [![Status](https://img.shields.io/badge/status-alpha-orange)](./pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue)](./pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue)](./pyproject.toml)
 
 Reusable authentication and authorization for FastAPI applications built on top of `FastAPI`, `SQLModel`, JWT cookies, and API tokens.
 
@@ -43,6 +43,7 @@ UsrAK is aimed at backend developers who want to plug a working auth surface int
 | Password reset via email | Yes | Link-based reset flow |
 | API tokens | Yes | Includes create/list/delete endpoints |
 | API token IP allowlist | Yes | `whitelisted_ip_addresses` on token model |
+| Persistent token type registry | Yes | Separates UsrAK API tokens from application-managed token purposes |
 | Optional user resolution | Yes | Access cookie, API token, or both |
 | Role-based protection | Yes | `require_roles(...)` dependency |
 | Role-aware admin user management | Yes | Scoped `create/update/delete` checks by target role |
@@ -125,7 +126,12 @@ class ApiTokenRead(BaseModel):
 ### 3. Configure the extension
 
 ```python
-from usrak import AppConfig, RouterConfig
+from usrak import (
+    AppConfig,
+    PersistentTokenTypeConfig,
+    RouterConfig,
+    TokenTypeManagement,
+)
 
 app_config = AppConfig(
     DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/app",
@@ -146,6 +152,16 @@ router_config = RouterConfig(
     ROLE_MODEL=Role,
     TOKENS_MODEL=ApiToken,
     TOKENS_READ_SCHEMA=ApiTokenRead,
+    PERSISTENT_TOKEN_TYPES=(
+        PersistentTokenTypeConfig(
+            token_type="api_token",
+            management=TokenTypeManagement.USRAK_API,
+        ),
+        PersistentTokenTypeConfig(
+            token_type="my_integration",
+            management=TokenTypeManagement.APPLICATION,
+        ),
+    ),
     ENABLE_EMAIL_REGISTRATION=True,
     ENABLE_PASSWORD_RESET_VIA_EMAIL=True,
     USE_VERIFICATION_LINKS_FOR_SIGNUP=True,
@@ -366,6 +382,18 @@ That means you can:
 - expose only public-safe attributes
 - version your outward response contract without forking the auth logic
 
+### Register application-managed persistent tokens
+
+`PERSISTENT_TOKEN_TYPES` declares which bounded context owns each stored `token_type`.
+Exactly one type must use `management="usrak_api"`; built-in `/api-tokens` routes and
+`X-API-Key` authentication are restricted to that type. Any number of purpose-bound types
+may use `management="application"` and remain invisible to built-in API-token management.
+
+Token type values are case-sensitive and are never normalized. Records with an unregistered
+type are ignored by UsrAK and fail closed during API-key authentication. Applications remain
+responsible for the routes, secret format, scopes, hashing and validation of application-managed
+types; UsrAK does not expose a generic `/tokens/{type}` lifecycle.
+
 ## Project Layout
 
 ```text
@@ -425,6 +453,16 @@ For disposable infra during higher-level scenarios, use `docker-compose.tests.ya
 ## Changelog
 
 This section is derived from git tags and the current `HEAD`.
+
+### 0.5.0 - 2026-08-24
+
+- Added a declarative registry that separates UsrAK-managed API tokens from application-managed
+  persistent token purposes.
+- Scoped built-in API-token list/create/delete and `X-API-Key` resolution to the configured UsrAK
+  token type.
+- Removed API-token authentication caching so revocation, expiration and IP allowlists are checked
+  against current database state on every request.
+- Fixed opaque API-token validation so random secrets are no longer passed through JWT decoding.
 
 ### 0.3.0 - 2026-03-16
 

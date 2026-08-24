@@ -3,10 +3,26 @@ from enum import Enum
 import pytest
 from pydantic import ValidationError
 
-from usrak import AppConfig, DefaultRoles, RouterConfig
-from usrak.core.dependencies.config_provider import get_app_config, set_app_config, get_router_config, \
-    set_router_config, app_config as global_app_config, router_config as global_router_config
-from usrak.core.managers.key_value_store import InMemoryKeyValueStore, RedisKeyValueStore, LMDBKeyValueStore
+from usrak import (
+    AppConfig,
+    DefaultRoles,
+    PersistentTokenTypeConfig,
+    RouterConfig,
+    TokenTypeManagement,
+)
+from usrak.core.dependencies.config_provider import app_config as global_app_config
+from usrak.core.dependencies.config_provider import (
+    get_app_config,
+    get_router_config,
+    set_app_config,
+    set_router_config,
+)
+from usrak.core.dependencies.config_provider import router_config as global_router_config
+from usrak.core.managers.key_value_store import (
+    InMemoryKeyValueStore,
+    LMDBKeyValueStore,
+    RedisKeyValueStore,
+)
 from usrak.core.managers.notification.no_op import NoOpNotificationService
 from usrak.core.managers.notification.smtp import SmtpNotificationService
 from usrak.core.managers.rate_limiter.no_op import NoOpFastApiRateLimiter
@@ -63,6 +79,60 @@ def test_router_config_creation(router_config: RouterConfig):
     assert router_config.USER_READ_SCHEMA is TestUserReadSchema
     assert router_config.DEFAULT_ROLES_ENUM is DefaultRoles
     assert router_config.ENABLE_ADMIN_PANEL is True  # Значение по умолчанию
+    assert router_config.usrak_api_token_type == "api_token"
+    assert router_config.PERSISTENT_TOKEN_TYPES == (
+        PersistentTokenTypeConfig(
+            token_type="api_token",
+            management=TokenTypeManagement.USRAK_API,
+        ),
+    )
+
+
+def test_router_config_supports_application_managed_token_types():
+    config = make_router_config(
+        PERSISTENT_TOKEN_TYPES=(
+            {"token_type": "api_token", "management": "usrak_api"},
+            {"token_type": "MCP", "management": "application"},
+        )
+    )
+
+    assert config.usrak_api_token_type == "api_token"
+    assert config.PERSISTENT_TOKEN_TYPES[1].token_type == "MCP"
+
+
+@pytest.mark.parametrize("token_type", ["", " api_token", "api_token ", "x" * 65])
+def test_router_config_rejects_invalid_token_type(token_type: str):
+    with pytest.raises(ValidationError):
+        make_router_config(
+            PERSISTENT_TOKEN_TYPES=(
+                {"token_type": token_type, "management": "usrak_api"},
+            )
+        )
+
+
+def test_router_config_rejects_duplicate_token_types():
+    with pytest.raises(ValidationError, match="unique token_type values"):
+        make_router_config(
+            PERSISTENT_TOKEN_TYPES=(
+                {"token_type": "api_token", "management": "usrak_api"},
+                {"token_type": "api_token", "management": "application"},
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "policies",
+    [
+        ({"token_type": "MCP", "management": "application"},),
+        (
+            {"token_type": "api_token", "management": "usrak_api"},
+            {"token_type": "other_api", "management": "usrak_api"},
+        ),
+    ],
+)
+def test_router_config_requires_exactly_one_usrak_api_type(policies):
+    with pytest.raises(ValidationError, match="exactly one usrAK-managed API token type"):
+        make_router_config(PERSISTENT_TOKEN_TYPES=policies)
 
 
 def test_router_config_missing_required_fields():
